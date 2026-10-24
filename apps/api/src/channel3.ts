@@ -17,6 +17,8 @@ interface C3Product {
   id: string;
   title: string;
   images?: { url?: string }[];
+  brands?: { name: string }[];
+  category?: { title: string } | null;
   offers?: { url: string; domain: string; price: C3Price; availability?: string }[];
 }
 
@@ -45,6 +47,9 @@ export async function searchProducts(apiKey: string, query: string, limit = 10):
     if (cheapest.price.compare_at_price) offer.compareAtCents = toCents(cheapest.price.compare_at_price);
     const image = p.images?.[0]?.url;
     if (image) offer.imageUrl = image;
+    if (p.category?.title) offer.category = p.category.title;
+    const brand = p.brands?.[0]?.name;
+    if (brand) offer.brand = brand;
     offers.push(offer);
   }
   return offers;

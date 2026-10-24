@@ -28,6 +28,8 @@ export interface Offer {
   currency: string;
   compareAtCents?: number; // list price before the discount, when the store shows one
   imageUrl?: string;
+  category?: string;
+  brand?: string;
 }
 
 export type Verdict =
@@ -79,3 +81,5 @@ export function toCents(amount: number): number {
 export function formatCents(cents: number): string {
   return (cents / 100).toFixed(2);
 }
+
+export * from "./taste.js";

@@ -2,6 +2,14 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { formatCents, monthOf, savingsCents, toCents, type Transaction, type Verdict } from "@snagwise/core";
 import { api, type Budget, type Config, type Health, type Wish } from "./api";
 import { PayPalButton } from "./PayPalButton";
+import { Discover } from "./Discover";
+
+type Tab = "discover" | "wallet" | "spending";
+const TABS: { id: Tab; label: string }[] = [
+  { id: "discover", label: "Discover" },
+  { id: "wallet", label: "Wallet" },
+  { id: "spending", label: "Spending" },
+];
 
 const VERDICT_TEXT: Record<Verdict["reason"], string> = {
   within_target_and_budget: "At or below your target and within budget. Ready to buy.",
@@ -21,6 +29,7 @@ export function App() {
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [verdicts, setVerdicts] = useState<Record<string, Verdict | null>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("discover");
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -94,11 +103,20 @@ export function App() {
             Product search {health.channel3 ? "connected" : "needs a key"} · PayPal sandbox {health.paypal ? "connected" : "needs credentials"}
           </p>
         )}
+        <nav className="tabs" aria-label="Sections">
+          {TABS.map((t) => (
+            <button key={t.id} className={tab === t.id ? "active" : ""} aria-current={tab === t.id ? "page" : undefined} onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </nav>
       </header>
 
       {error && <p role="alert">{error}</p>}
 
-      {budget && (
+      {tab === "discover" && <Discover onWalletChange={() => void refresh()} />}
+
+      {tab === "wallet" && budget && (
         <section aria-labelledby="budget-title">
           <h2 id="budget-title">This month</h2>
           <p className="big">
@@ -117,6 +135,7 @@ export function App() {
         </section>
       )}
 
+      {tab === "wallet" && (
       <section aria-labelledby="wallet-title">
         <h2 id="wallet-title">Wallet</h2>
         <form onSubmit={addWish} className="row">
@@ -164,7 +183,9 @@ export function App() {
           })}
         </ul>
       </section>
+      )}
 
+      {tab === "spending" && (
       <section aria-labelledby="spending-title">
         <h2 id="spending-title">Spending</h2>
         {byCategory.length > 0 && (
@@ -202,6 +223,7 @@ export function App() {
         )}
         {purchases > 0 && <p className="hint">{purchases} purchase(s) made through Snagwise.</p>}
       </section>
+      )}
     </main>
   );
 }

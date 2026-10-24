@@ -31,6 +31,27 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX transactions_date ON transactions(date);
   `,
+  `
+  CREATE TABLE reactions (
+    product_id TEXT PRIMARY KEY,
+    offer TEXT NOT NULL,
+    category TEXT NOT NULL,
+    brand TEXT,
+    price_cents INTEGER NOT NULL,
+    liked INTEGER NOT NULL,
+    reasons TEXT NOT NULL,
+    source TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE shares (
+    id TEXT PRIMARY KEY,
+    offer TEXT NOT NULL,
+    category TEXT NOT NULL,
+    opens INTEGER NOT NULL DEFAULT 0,
+    saves INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+  `,
 ];
 
 export function openDb(path: string): DB {

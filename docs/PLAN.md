@@ -18,6 +18,18 @@
 | Compra con PayPal **aprobada por la persona** | Varias monedas: solo USD |
 | Contador "te ahorraste US$X" | Cuentas de usuario completas: un usuario demo alcanza |
 
+## Cómo aprende la app tus gustos
+
+- **Descubrir (swipe):** tarjetas de ofertas reales. Izquierda = no; derecha = me gusta, y elegís **qué** te gustó: el producto, el precio o ambos.
+  - "Me gusta el producto, no el precio" baja el precio que la app cree que pagarías en esa categoría (85% del precio visto). Es la señal para vigilarlo hasta que baje.
+  - "Me gusta el precio" sube ese techo.
+- **Recomendar:** de una oferta que te gustó se genera una **tarjeta 9:16 con QR** para historias. El QR abre una página pública (`/s/:id`) sin cuenta.
+- **Referidos también enseñan:** cada apertura del QR y cada "guardar en mi cartera" desde esa página suman al perfil. Guardar una oferta recomendada pesa más que un swipe.
+- El **perfil de gustos** (`packages/core/src/taste.ts`) ordena las tarjetas de Descubrir y lo va a leer el agente para buscar y proponer.
+- Sin clave de Channel3, Descubrir usa un **catálogo de ejemplo solo para desarrollo** (marcado en pantalla). No aparece en la demo final.
+
+Amigos con cuentas queda fuera del hackathon (cuentas, privacidad y tiempo). La tarjeta con QR cubre la parte social sin exponer compras.
+
 ## Arquitectura
 
 ```
@@ -62,8 +74,9 @@ En sandbox, la orden la cobra **nuestra cuenta comercial de prueba**, como un se
 
 | Fechas | Objetivo | Hecho cuando… |
 |---|---|---|
-| 22–28 oct | Base y flujo de punta a punta | Cuentas sandbox y Channel3 listas; buscar → guardar → revisar precio → pagar en sandbox → gasto registrado, aunque sea feo |
-| 29 oct–4 nov | Agente y producto | Chat con el agente usando las herramientas; cartera y gastos con AG Grid; seed de datos demo |
+| 22–25 oct | Base, swipe y tarjeta QR | Hecho: cartera, presupuesto, botón de PayPal, seed, Descubrir con motivos, perfil de gustos, tarjeta 9:16 y página del QR. Falta probar con claves reales |
+| 26 oct–1 nov | Agente | Chat con el agente usando perfil, cartera, presupuesto y propuesta de compra |
+| 2–4 nov | Producto | Flujo completo probado con claves reales; cartera y gastos con AG Grid |
 | 5–8 nov | Diseño y deploy | UI cuidada en celular; deploy en Render con URL pública; README en inglés |
 | 9–10 nov | Video | Guion de 2:30, grabación y subida a YouTube (pública), sin música con copyright |
 | 11 nov | Entrega | Formulario de Devpost completo y enviado |

@@ -4,6 +4,7 @@ import { bestOffer, evaluateOffer, monthOf, remainingBudget, type Offer, type Tr
 import { nowIso, type DB } from "./db.js";
 import { searchProducts } from "./channel3.js";
 import { captureOrder, createOrder, type PayPalConfig } from "./paypal.js";
+import { registerDiscover } from "./discover.js";
 
 export interface Env {
   channel3Key?: string;
@@ -153,6 +154,8 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     }
     return c.json({ status: result.status, budget: budgetSummary() });
   });
+
+  registerDiscover(app, db, env.channel3Key);
 
   // TODO(week 1): POST /api/agent — Claude tool-use loop over search, wishlist, budget and order proposals.
 

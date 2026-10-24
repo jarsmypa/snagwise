@@ -1,4 +1,17 @@
-import type { Offer, Transaction, Verdict } from "@snagwise/core";
+import type { Offer, Reason, TasteProfile, Transaction, Verdict } from "@snagwise/core";
+
+export interface Deck {
+  sample: boolean;
+  cards: Offer[];
+}
+
+export interface Share {
+  id: string;
+  offer: Offer;
+  createdAt: string;
+  opens: number;
+  saves: number;
+}
 
 export interface Budget {
   month: string;
@@ -50,4 +63,12 @@ export const api = {
   createOrder: (id: string) => request<{ orderId: string }>(`/api/wishlist/${id}/order`, send("POST")),
   captureOrder: (orderId: string, wishId: string) =>
     request<{ status: string; budget: Budget }>(`/api/orders/${orderId}/capture`, send("POST", { wishId })),
+  discover: () => request<Deck>("/api/discover"),
+  react: (offer: Offer, liked: boolean, reasons: Reason[]) =>
+    request<{ profile: TasteProfile }>("/api/reactions", send("POST", { offer, liked, reasons })),
+  profile: () => request<{ profile: TasteProfile; top: string[] }>("/api/profile"),
+  createShare: (offer: Offer) => request<{ id: string }>("/api/shares", send("POST", { offer })),
+  share: (id: string) => request<Share>(`/api/shares/${id}`),
+  openShare: (id: string) => request<null>(`/api/shares/${id}/open`, send("POST")),
+  saveShare: (id: string) => request<{ saved: boolean }>(`/api/shares/${id}/save`, send("POST")),
 };
