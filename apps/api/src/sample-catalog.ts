@@ -38,4 +38,8 @@ export const SAMPLE_CATALOG: Offer[] = [
   item("14", "Smart LED desk lamp with USB-C", "Lamps", "Lumen", 39, 59),
   item("15", "Sunrise alarm clock lamp", "Lamps", "Lumen", 69),
   item("16", "Carry-on backpack, 35 L", "Bags", "Wayfarer", 129, 160),
+  item("17", "Wireless game controller, last-gen model", "Controllers", "Pixel Forge", 44, 69),
+  item("18", "Gaming headset with detachable mic", "Headsets", "Pixel Forge", 59, 89),
+  item("19", "Handheld console, manufacturer refurbished", "Consoles", "Pixel Forge", 249, 329),
+  item("20", "Open-world adventure game, physical edition", "Video Games", "Sample Studio", 39, 69),
 ];

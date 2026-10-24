@@ -13,6 +13,11 @@ const PROVIDERS: { id: Byok["provider"]; label: string; hint: string }[] = [
 ];
 
 const BYOK_KEY = "snagwise.byok";
+const AI_CHOICE_KEY = "snagwise.ai";
+const AUTO = "auto";
+
+// Provider id the server gives a connected personal key.
+const byokId = (b: Byok) => (b.provider === "anthropic" ? "anthropic" : `byok-${b.provider}`);
 const money = (cents: number) => `$${formatCents(cents)}`;
 
 function loadByok(): Byok | null {
@@ -32,13 +37,22 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
   const [error, setError] = useState<string | null>(null);
   const [byok, setByok] = useState<Byok | null>(loadByok);
   const [remember, setRemember] = useState(() => storage.get(BYOK_KEY) !== null);
-  const [freeProviders, setFreeProviders] = useState<string[]>([]);
+  const [freeProviders, setFreeProviders] = useState<{ id: string; label: string }[]>([]);
+  const [choice, setChoice] = useState(() => storage.get(AI_CHOICE_KEY) ?? AUTO);
   const [contextMd, setContextMd] = useState<string | null>(null);
   const [paid, setPaid] = useState<Set<string>>(new Set());
   const endRef = useRef<HTMLDivElement>(null);
+  // A saved choice can point to a key that was disconnected or a provider no longer configured.
+  const selected = choice === AUTO || freeProviders.some((p) => p.id === choice) || (byok && byokId(byok) === choice) ? choice : AUTO;
+
+  const [activeSkills, setActiveSkills] = useState<string[]>([]);
 
   useEffect(() => {
     api.freeProviders().then(setFreeProviders).catch(() => undefined);
+    api
+      .skills()
+      .then((r) => setActiveSkills(r.skills.filter((s) => s.active).map((s) => s.name)))
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -55,7 +69,7 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
     setBusy(true);
     setError(null);
     try {
-      const res = await api.ask(message, conversationId, byok);
+      const res = await api.ask(message, conversationId, byok, selected === AUTO ? null : selected);
       setConversationId(res.conversationId);
       setMessages((m) => [...m, { role: "assistant", reply: res.reply, provider: res.provider, handoffs: res.handoffs, proposals: res.proposals }]);
       if (res.walletChanged) onWalletChange();
@@ -96,12 +110,34 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
   return (
     <section aria-labelledby="assistant-title">
       <h2 id="assistant-title">Assistant</h2>
-      <p className="hint">
-        {byok
-          ? `Using your ${PROVIDERS.find((p) => p.id === byok.provider)?.label} key, with the free providers as backup.`
-          : freeProviders.length
-            ? `Free AI providers, rotating when one hits its limit: ${freeProviders.join(" → ")}`
-            : "No free AI provider is set up on this server. Connect your own key below."}
+      {freeProviders.length === 0 && !byok ? (
+        <p className="hint">No free AI provider is set up on this server. Connect your own key below.</p>
+      ) : (
+        <div className="row">
+          <label>
+            AI
+            <select
+              value={selected}
+              onChange={(e) => {
+                setChoice(e.target.value);
+                storage.set(AI_CHOICE_KEY, e.target.value);
+              }}
+            >
+              <option value={AUTO}>Auto · rotate when one hits its limit</option>
+              {byok && <option value={byokId(byok)}>Your key · {PROVIDERS.find((p) => p.id === byok.provider)?.label}</option>}
+              {freeProviders.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label} · free
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="hint small">The others stay as backup and pick up from the shared context file.</p>
+        </div>
+      )}
+
+      <p className="hint small">
+        {activeSkills.length ? `SnagSkills on: ${activeSkills.join(", ")}` : "No SnagSkills on. Add community shopping tips in the SnagSkills tab."}
       </p>
 
       <div className="chat" aria-live="polite">

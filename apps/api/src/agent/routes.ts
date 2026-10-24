@@ -52,11 +52,17 @@ export function registerAgent(
   const daily = new RateLimiter(opts.limits.freeRequestsPerDay, 24 * 60 * 60_000);
   const makeByok = opts.makeByok ?? byokProvider;
 
-  app.get("/api/agent/providers", (c) => c.json(opts.freeProviders.map((p) => p.label)));
+  app.get("/api/agent/providers", (c) => c.json(opts.freeProviders.map((p) => ({ id: p.id, label: p.label }))));
 
   app.post("/api/agent", async (c) => {
     const body = z
-      .object({ conversationId: z.string().max(64).optional(), message: z.string().trim().min(1).max(1000), byok: byokSchema.optional() })
+      .object({
+        conversationId: z.string().max(64).optional(),
+        message: z.string().trim().min(1).max(1000),
+        byok: byokSchema.optional(),
+        // The AI the user picked; the others stay as backup if it hits a limit.
+        prefer: z.string().max(40).optional(),
+      })
       .parse(await c.req.json());
 
     if (!perIp.take(clientIp(c))) return c.json({ error: "Too many messages. Try again in a while.", code: "rate_limited" }, 429);
@@ -70,6 +76,10 @@ export function registerAgent(
       } catch (err) {
         return c.json({ error: err instanceof Error ? err.message : "Invalid AI settings" }, 400);
       }
+    }
+    if (body.prefer) {
+      const preferred = providers.find((p) => p.id === body.prefer);
+      if (preferred) providers = [preferred, ...providers.filter((p) => p !== preferred)];
     }
     if (providers.length === 0) {
       return c.json({ error: "No AI provider is set up. Add a free provider key on the server, or connect your own key.", code: "no_provider" }, 503);
@@ -96,6 +106,7 @@ export function registerAgent(
         wallet: opts.deps.wallet(),
         recent,
         notes: session.notes,
+        skills: opts.deps.skills(),
         ...(handoff ? { handoff } : {}),
       });
 

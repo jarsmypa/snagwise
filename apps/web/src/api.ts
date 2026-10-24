@@ -1,4 +1,9 @@
-import type { Offer, Reason, TasteProfile, Transaction, Verdict } from "@snagwise/core";
+import type { Offer, Reason, Skill, TasteProfile, Transaction, Verdict } from "@snagwise/core";
+
+export interface SkillItem extends Skill {
+  origin: "community" | "imported";
+  active: boolean;
+}
 
 export interface Deck {
   sample: boolean;
@@ -98,8 +103,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const isJson = res.headers.get("content-type")?.includes("application/json");
   const body = res.status === 204 ? null : isJson ? await res.json() : await res.text();
   if (!res.ok) {
-    const err = body as { error?: string; code?: string } | null;
-    throw new ApiError(err?.error ?? `Request failed (${res.status})`, res.status, err?.code);
+    const err = body as { error?: string; code?: string; errors?: string[] } | null;
+    const detail = err?.errors?.length ? ` ${err.errors.join(" ")}` : "";
+    throw new ApiError(`${err?.error ?? `Request failed (${res.status})`}${detail}`, res.status, err?.code);
   }
   return body as T;
 }
@@ -128,8 +134,17 @@ export const api = {
   share: (id: string) => request<Share>(`/api/shares/${id}`),
   openShare: (id: string) => request<null>(`/api/shares/${id}/open`, send("POST")),
   saveShare: (id: string) => request<{ saved: boolean }>(`/api/shares/${id}/save`, send("POST")),
-  ask: (message: string, conversationId: string | null, byok: Byok | null) =>
-    request<AgentReply>("/api/agent", send("POST", { message, ...(conversationId ? { conversationId } : {}), ...(byok ? { byok } : {}) })),
+  ask: (message: string, conversationId: string | null, byok: Byok | null, prefer: string | null) =>
+    request<AgentReply>(
+      "/api/agent",
+      send("POST", { message, ...(conversationId ? { conversationId } : {}), ...(byok ? { byok } : {}), ...(prefer ? { prefer } : {}) }),
+    ),
   contextMd: (conversationId: string) => request<string>(`/api/agent/${conversationId}/context.md`),
-  freeProviders: () => request<string[]>("/api/agent/providers"),
+  freeProviders: () => request<{ id: string; label: string }[]>("/api/agent/providers"),
+  skills: () => request<{ limit: number; skills: SkillItem[] }>("/api/skills"),
+  setSkillActive: (id: string, active: boolean) => request<{ active: string[] }>(`/api/skills/${id}/active`, send("PUT", { active })),
+  importSkill: (markdown: string) => request<SkillItem>("/api/skills/import", send("POST", { markdown })),
+  removeSkill: (id: string) => request<null>(`/api/skills/${id}`, send("DELETE")),
+  savings: () => request<{ savedCents: number; purchases: number }>("/api/savings"),
+  addWishFromOffer: (offer: Offer, targetCents: number) => request<Wish>("/api/wishlist", send("POST", { query: offer.title, targetCents, offer })),
 };

@@ -8,6 +8,9 @@ import { openDb } from "./db.js";
 import { seedDemo } from "./seed.js";
 import { compatibleProvider, PRESETS } from "./agent/openai-compatible.js";
 import type { Provider } from "./agent/types.js";
+import { loadCommunitySkills } from "./skills.js";
+import { refreshWalletPrices } from "./watch.js";
+import { searchProducts } from "./channel3.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 // Paths are relative to apps/api/dist, where this file ends up bundled.
@@ -41,7 +44,20 @@ env.agentLimits = {
   freeRequestsPerDay: Number(process.env.SNAGWISE_AGENT_PER_DAY ?? 300),
 };
 
+// Reviewed community skills live in the repo's skills/ folder (repo root, three levels up from apps/api/dist).
+const SKILLS_DIR = process.env.SNAGWISE_SKILLS ?? resolve(HERE, "../../../skills");
+env.communitySkills = loadCommunitySkills(SKILLS_DIR);
+
 const db = openDb(DB_PATH);
+
+// Background price watch, only with a real product search (the sample catalog never changes).
+const WATCH_HOURS = Number(process.env.SNAGWISE_PRICE_WATCH_HOURS ?? 6);
+if (env.channel3Key && WATCH_HOURS > 0) {
+  const key = env.channel3Key;
+  setInterval(() => {
+    void refreshWalletPrices(db, (q) => searchProducts(key, q, 10)).then((n) => console.log(`Price watch: ${n} wallet items refreshed`));
+  }, WATCH_HOURS * 60 * 60_000).unref();
+}
 // Render's free disk is wiped on every deploy, so the hosted demo re-seeds itself on boot.
 if (process.env.SNAGWISE_SEED_DEMO === "1") seedDemo(db);
 const app = createApp({ db, env });
@@ -56,6 +72,7 @@ if (existsSync(WEB_DIR)) {
 serve({ fetch: app.fetch, port: PORT, hostname: process.env.HOST ?? "0.0.0.0" }, (info) => {
   console.log(`Snagwise listening on port ${info.port} (db: ${DB_PATH})`);
   console.log(`Free AI providers: ${free.map((p) => p.label).join(", ") || "none (users can still connect their own key)"}`);
+  console.log(`SnagSkills: ${env.communitySkills?.length ?? 0} community skills from ${SKILLS_DIR}`);
 });
 
 const shutdown = () => {

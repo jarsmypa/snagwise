@@ -1,16 +1,16 @@
 import type { Hono } from "hono";
 import { z } from "zod";
-import { buildProfile, scoreOffer, topCategories, type Offer, type Reaction, type ShareStat } from "@snagwise/core";
+import { buildProfile, scoreOffer, skillScore, topCategories, type Offer, type Reaction, type ShareStat, type Skill } from "@snagwise/core";
 import { nowIso, type DB } from "./db.js";
 import { searchProducts } from "./channel3.js";
 import { SAMPLE_CATALOG } from "./sample-catalog.js";
 
 // Where Discover starts before the user has given any signal, and where it keeps exploring after.
-const STARTER_QUERIES = ["wireless headphones", "running shoes", "coffee gear", "camping gear", "desk setup"];
+const STARTER_QUERIES = ["wireless headphones", "running shoes", "coffee gear", "camping gear", "desk setup", "video games"];
 const DECK_SIZE = 10;
 const MAX_IMAGE_BYTES = 5_000_000;
 
-const offerSchema = z.object({
+export const offerSchema = z.object({
   productId: z.string().min(1),
   title: z.string().min(1),
   url: z.url(),
@@ -63,7 +63,7 @@ function searchSample(query: string): Offer[] {
   return SAMPLE_CATALOG.filter((o) => words.some((w) => `${o.title} ${o.category ?? ""}`.toLowerCase().includes(w)));
 }
 
-export function registerDiscover(app: Hono, db: DB, channel3Key: string | undefined) {
+export function registerDiscover(app: Hono, db: DB, channel3Key: string | undefined, activeSkills: () => Skill[] = () => []) {
   const reactions = () => (db.prepare("SELECT * FROM reactions").all() as unknown as ReactionRow[]).map(toReaction);
   const shareStats = (): ShareStat[] =>
     (db.prepare("SELECT category, SUM(opens) AS opens, SUM(saves) AS saves FROM shares GROUP BY category").all() as unknown as ShareStat[]);
@@ -83,10 +83,13 @@ export function registerDiscover(app: Hono, db: DB, channel3Key: string | undefi
   app.get("/api/discover", async (c) => {
     const p = profile();
     const seen = new Set(reactions().map((r) => r.productId));
+    const skills = activeSkills();
     let candidates: Offer[];
     if (channel3Key) {
       const explore = STARTER_QUERIES[Math.floor(Math.random() * STARTER_QUERIES.length)]!;
-      const queries = [...new Set([...topCategories(p, 2), explore])];
+      // Active skills say what the user is shopping for, so their first category joins the mix. Capped at 3 searches.
+      const fromSkills = skills.map((s) => s.categories[0]).filter((x): x is string => Boolean(x));
+      const queries = [...new Set([...topCategories(p, 2), ...fromSkills, explore])].slice(0, 3);
       const results = await Promise.all(queries.map((q) => searchProducts(channel3Key, q, 10)));
       candidates = [...new Map(results.flat().map((o) => [o.productId, o])).values()];
     } else {
@@ -94,7 +97,7 @@ export function registerDiscover(app: Hono, db: DB, channel3Key: string | undefi
     }
     const cards = candidates
       .filter((o) => !seen.has(o.productId))
-      .map((o) => ({ o, score: scoreOffer(p, o) + Math.random() * 1.5 }))
+      .map((o) => ({ o, score: scoreOffer(p, o) + skillScore(skills, o) + Math.random() * 1.5 }))
       .sort((a, b) => b.score - a.score)
       .slice(0, DECK_SIZE)
       .map(({ o }) => o);

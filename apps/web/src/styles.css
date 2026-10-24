@@ -464,3 +464,61 @@ label.check {
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+.badge.warn {
+  border-color: #b3261e;
+  color: #b3261e;
+}
+
+.skill-body {
+  white-space: pre-wrap;
+  font: inherit;
+  font-size: 0.9rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.75rem;
+  max-height: 22rem;
+  overflow: auto;
+}
+
+textarea {
+  font: 0.85rem/1.4 ui-monospace, monospace;
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.stack.wide {
+  max-width: none;
+}
+
+label.button.file {
+  display: inline-block;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+label.button.file input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+label.button.file:focus-within {
+  outline: 2px solid var(--accent);
+}
+
+.grid-wrap {
+  width: 100%;
+  min-height: 160px;
+}

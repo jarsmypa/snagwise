@@ -1,0 +1,32 @@
+# Render Blueprint: one free web service serving the API and the web app.
+# Secrets are marked sync: false, so Render asks for them in the dashboard and they never live in git.
+services:
+  - type: web
+    name: snagwise
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      # The free disk is wiped on each deploy: recreate the sample data on boot.
+      - key: SNAGWISE_SEED_DEMO
+        value: "1"
+      - key: SNAGWISE_ACCESS_CODE
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: CHANNEL3_API_KEY
+        sync: false

@@ -62,6 +62,14 @@ const MIGRATIONS: string[] = [
     updated_at TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE user_skills (
+    id TEXT PRIMARY KEY,
+    markdown TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  ALTER TABLE transactions ADD COLUMN saved_cents INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 export function openDb(path: string): DB {

@@ -94,7 +94,7 @@ export function Discover({ onWalletChange }: { onWalletChange: () => void }) {
     // Liked the product but not the price: watch it for a lower one.
     const target = reasons.includes("price") ? offer.priceCents : Math.round(offer.priceCents * 0.85);
     try {
-      await api.addWish(offer.title, target);
+      await api.addWishFromOffer(offer, target);
       onWalletChange();
       setNote(`Saved. Snagwise will watch for ${money(target)} or less.`);
     } catch (err) {

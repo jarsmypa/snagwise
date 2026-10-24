@@ -110,6 +110,19 @@ describe("agent", () => {
     expect(results[0]).toContain("above the target");
   });
 
+  it("starts with the AI the user picked and lists the available ones", async () => {
+    const a = scripted("a", [text("From a")]);
+    const b = scripted("b", [text("From b")]);
+    const { app } = setup({ freeProviders: [a, b] });
+    expect(await (await app.request("/api/agent/providers")).json()).toEqual([
+      { id: "a", label: "Fake a" },
+      { id: "b", label: "Fake b" },
+    ]);
+    const res = (await (await ask(app, { message: "hi", prefer: "b" })).json()) as AgentReply;
+    expect(res.reply).toBe("From b");
+    expect(a.calls).toHaveLength(0);
+  });
+
   it("uses the user's own key first", async () => {
     const mine = scripted("mine", [text("From your key")]);
     const free = scripted("free", [text("From free")]);

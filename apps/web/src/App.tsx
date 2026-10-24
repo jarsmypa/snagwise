@@ -1,14 +1,18 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { formatCents, monthOf, savingsCents, toCents, type Transaction, type Verdict } from "@snagwise/core";
 import { api, ApiError, setAccessCode, type Budget, type Config, type Health, type Wish } from "./api";
 import { PayPalButton } from "./PayPalButton";
 import { Discover } from "./Discover";
 import { Assistant } from "./Assistant";
+import { SnagSkills } from "./SnagSkills";
+// AG Grid is the heaviest dependency: load it only when the Spending tab opens.
+const SpendingGrid = lazy(() => import("./SpendingGrid").then((m) => ({ default: m.SpendingGrid })));
 
-type Tab = "assistant" | "discover" | "wallet" | "spending";
+type Tab = "assistant" | "discover" | "skills" | "wallet" | "spending";
 const TABS: { id: Tab; label: string }[] = [
   { id: "assistant", label: "Assistant" },
   { id: "discover", label: "Discover" },
+  { id: "skills", label: "SnagSkills" },
   { id: "wallet", label: "Wallet" },
   { id: "spending", label: "Spending" },
 ];
@@ -33,11 +37,13 @@ export function App() {
   const [busy, setBusy] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("assistant");
   const [needAccess, setNeedAccess] = useState(false);
+  const [savings, setSavings] = useState<{ savedCents: number; purchases: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const [h, c, b, t, w] = await Promise.all([api.health(), api.config(), api.budget(), api.transactions(), api.wishlist()]);
+      const [h, c, b, t, w, s] = await Promise.all([api.health(), api.config(), api.budget(), api.transactions(), api.wishlist(), api.savings()]);
+      setSavings(s);
       setHealth(h);
       setConfig(c);
       setBudget(b);
@@ -102,7 +108,6 @@ export function App() {
   const byCategory = Object.entries(
     thisMonth.reduce<Record<string, number>>((acc, t) => ({ ...acc, [t.category]: (acc[t.category] ?? 0) + t.amountCents }), {}),
   ).sort((a, b) => b[1] - a[1]);
-  const purchases = txs.filter((t) => t.category === "wishlist").length;
 
   if (needAccess) {
     return (
@@ -143,6 +148,7 @@ export function App() {
 
       {tab === "assistant" && <Assistant config={config} onWalletChange={() => void refresh()} onAccessNeeded={() => setNeedAccess(true)} />}
       {tab === "discover" && <Discover onWalletChange={() => void refresh()} />}
+      {tab === "skills" && <SnagSkills />}
 
       {tab === "wallet" && budget && (
         <section aria-labelledby="budget-title">
@@ -228,28 +234,15 @@ export function App() {
         {thisMonth.length === 0 ? (
           <p className="hint">No expenses this month. Run npm run demo --workspace @snagwise/api for sample data.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Merchant</th>
-                <th>Category</th>
-                <th className="num">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {thisMonth.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.date.slice(5, 10)}</td>
-                  <td>{t.merchant}</td>
-                  <td>{t.category}</td>
-                  <td className="num">{money(t.amountCents)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Suspense fallback={<p className="hint">Loading table…</p>}>
+            <SpendingGrid rows={thisMonth} />
+          </Suspense>
         )}
-        {purchases > 0 && <p className="hint">{purchases} purchase(s) made through Snagwise.</p>}
+        {savings && savings.purchases > 0 && (
+          <p className="hint">
+            {savings.purchases} purchase(s) through Snagwise · you saved {money(savings.savedCents)} against list prices.
+          </p>
+        )}
       </section>
       )}
     </main>

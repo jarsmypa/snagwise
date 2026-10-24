@@ -1,4 +1,4 @@
-import { evaluateOffer, formatCents, scoreOffer, toCents, topCategories, type Offer, type TasteProfile } from "@snagwise/core";
+import { evaluateOffer, formatCents, scoreOffer, skillScore, toCents, topCategories, type Offer, type Skill, type TasteProfile } from "@snagwise/core";
 import type { ToolCall, ToolSpec } from "./types.js";
 
 /*
@@ -14,6 +14,7 @@ export interface AgentDeps {
   wallet(): { id: string; query: string; targetCents: number; currency: string; bestOffer: Offer | null }[];
   search(query: string): Promise<Offer[]>;
   addToWallet(offer: Offer, targetCents: number): string; // returns the new wallet item id
+  skills(): { skill: Skill; origin: "community" | "imported" }[]; // active SnagSkills
 }
 
 export interface Proposal {
@@ -95,7 +96,9 @@ export async function runTool(call: ToolCall, deps: AgentDeps, session: ToolSess
       const query = str(call.args.query).trim();
       if (!query) return "Error: query is required.";
       const profile = deps.profile();
-      const offers = (await deps.search(query)).sort((a, b) => scoreOffer(profile, b) - scoreOffer(profile, a)).slice(0, 8);
+      const skills = deps.skills().map((s) => s.skill);
+      const rank = (o: Offer) => scoreOffer(profile, o) + skillScore(skills, o);
+      const offers = (await deps.search(query)).sort((a, b) => rank(b) - rank(a)).slice(0, 8);
       for (const o of offers) session.seen.set(o.productId, o);
       if (offers.length === 0) return "No products found. Try a broader query.";
       return JSON.stringify(offers.map((o) => ({ product_id: o.productId, title: o.title, brand: o.brand ?? null, category: o.category ?? null, price: money(o.priceCents), list_price: o.compareAtCents ? money(o.compareAtCents) : null, store: o.domain })));

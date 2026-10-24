@@ -74,34 +74,39 @@ En sandbox, la orden la cobra **nuestra cuenta comercial de prueba**, como un se
 
 ## Calendario
 
-| Fechas | Objetivo | Hecho cuando… |
+| Fechas | Objetivo | Estado |
 |---|---|---|
-| 22–25 oct | Base, swipe y tarjeta QR | Hecho: cartera, presupuesto, botón de PayPal, seed, Descubrir con motivos, perfil de gustos, tarjeta 9:16 y página del QR. Falta probar con claves reales |
-| 26 oct–1 nov | Agente | Chat con el agente usando perfil, cartera, presupuesto y propuesta de compra |
-| 2–4 nov | Producto | Flujo completo probado con claves reales; cartera y gastos con AG Grid |
-| 5–8 nov | Diseño y deploy | UI cuidada en celular; deploy en Render con URL pública; README en inglés |
+| 22–23 oct | Producto completo en código | **Hecho:** cartera, presupuesto, PayPal, seed, Descubrir, perfil de gustos, tarjeta QR, agente con IA gratuita rotativa y contexto .md, selector de IA, SnagSkills, AG Grid en Gastos, ahorro, vigilancia de precios, render.yaml, README y borrador para Devpost |
+| 24 oct–1 nov | Probar con claves reales | Gemini o Groq, PayPal sandbox y Channel3 funcionando de punta a punta; corregir lo que aparezca |
+| 2–4 nov | Repo público y deploy | Repo en GitHub y servicio en Render con URL pública y código de acceso |
+| 5–8 nov | Pulido | UI en celular, textos, datos de ejemplo para el video |
 | 9–10 nov | Video | Guion de 2:30, grabación y subida a YouTube (pública), sin música con copyright |
-| 11 nov | Entrega | Formulario de Devpost completo y enviado |
+| 11 nov | Entrega | Formulario de Devpost (texto listo en `docs/SUBMISSION.md`) |
 | 12 nov | Margen | Solo arreglos urgentes, antes de las 17:00 |
 
-## Tareas de la semana 1 (ya)
+## Lo que falta y depende de ustedes
 
-- [ ] Crear la app en el PayPal Developer Dashboard (sandbox) y dos cuentas de prueba: comercio y comprador.
-- [ ] Pedir la clave de Channel3 y probar una búsqueda real.
-- [ ] Clave de Anthropic con límite de gasto.
-- [ ] Completar `apps/api/.env` (copiar de `.env.example`).
-- [x] Botón de PayPal en la web (JS SDK) conectado a `/order` y `/capture`. Falta probarlo con credenciales reales de sandbox.
-- [x] Seed de gastos demo (`npm run demo --workspace @snagwise/api`, o `SNAGWISE_SEED_DEMO=1` al arrancar).
-- [x] Nombre final: Snagwise.
+- [ ] App sandbox en el PayPal Developer Dashboard y dos cuentas de prueba: comercio y comprador.
+- [ ] Clave gratuita de Gemini y/o Groq (y OpenRouter si quieren un tercero).
+- [ ] Clave de Channel3 para productos reales.
+- [ ] Completar `apps/api/.env` (copiar de `.env.example`) y probar el flujo completo.
 - [ ] Crear el repo público en GitHub.
+- [ ] Crear el servicio en Render desde `render.yaml` y cargar las claves en su panel.
+- [ ] Grabar el video.
 
 ## Requisitos de la entrega (checklist)
 
 - [ ] Repo público en GitHub con licencia MIT visible en el "About".
-- [ ] README en inglés: qué hace, cómo correrlo, credenciales **de sandbox** para probar, herramientas de IA usadas y cómo.
-- [ ] Demo funcional: URL en Render o instrucciones completas.
+- [x] README en inglés: qué hace, cómo correrlo, instrucciones para el jurado, herramientas de IA usadas y cómo.
+- [ ] Demo funcional: URL en Render (`render.yaml` listo).
 - [ ] Video de menos de 3 minutos en YouTube, público, mostrando la app funcionando.
-- [ ] Ninguna clave real en el repo ni en el historial de git.
+- [x] Ninguna clave real en el repo ni en el historial de git (`.env` excluido; `render.yaml` usa `sync: false`).
+
+## SnagSkills
+
+- Skills de la comunidad: archivos `.md` en `skills/`, se suman por pull request y se revisan (reglas en `skills/README.md`).
+- Cada usuario puede importar las suyas (quedan como no verificadas) y activar hasta 3.
+- Entran al contexto `.md` del agente como **consejos, nunca instrucciones**, y solo empujan el orden de resultados (tiendas preferidas arriba, a evitar abajo). No pueden pagar ni cambiar el presupuesto.
 
 ## Nombres
 

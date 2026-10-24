@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { bestOffer, evaluateOffer, monthOf, remainingBudget, type Offer, type Transaction } from "@snagwise/core";
+import { bestOffer, evaluateOffer, monthOf, remainingBudget, savingsCents, type Offer, type Skill, type Transaction } from "@snagwise/core";
+import { registerSkills } from "./skills.js";
 import { nowIso, type DB } from "./db.js";
 import { searchProducts } from "./channel3.js";
 import { captureOrder, createOrder, type PayPalConfig } from "./paypal.js";
-import { registerDiscover } from "./discover.js";
+import { offerSchema, registerDiscover } from "./discover.js";
 import { accessCode } from "./guard.js";
 import { registerAgent, type AgentLimits, type Byok } from "./agent/routes.js";
 import { Rotation } from "./agent/rotation.js";
@@ -17,6 +18,7 @@ export interface Env {
   freeProviders?: Provider[]; // free-tier AI providers, in the order to try them
   agentLimits?: AgentLimits;
   makeByok?: (b: Byok) => Provider; // tests swap in a fake
+  communitySkills?: Skill[]; // the reviewed skills/ folder, loaded by main
 }
 
 const DEFAULT_LIMITS: AgentLimits = { perIpPerHour: 30, freeRequestsPerDay: 300 };
@@ -102,16 +104,20 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
   // Wishlist ("wallet" of saved deals)
   app.get("/api/wishlist", (c) =>
     c.json((db.prepare("SELECT * FROM wishlist ORDER BY created_at DESC").all() as unknown as WishRow[]).map(toWish)),
-  );  app.post("/api/wishlist", async (c) => {
+  );
+  // From Discover the exact offer comes along, so the wallet has a price baseline before any search.
+  app.post("/api/wishlist", async (c) => {
     const body = z
-      .object({ query: z.string().trim().min(2).max(200), targetCents: z.number().int().positive() })
+      .object({ query: z.string().trim().min(2).max(200), targetCents: z.number().int().positive(), offer: offerSchema.optional() })
       .parse(await c.req.json());
     const id = crypto.randomUUID();
-    db.prepare("INSERT INTO wishlist (id, query, target_cents, currency, created_at) VALUES (?, ?, ?, ?, ?)").run(
+    db.prepare("INSERT INTO wishlist (id, query, target_cents, currency, best_offer, last_checked_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
       id,
       body.query,
       body.targetCents,
       CURRENCY,
+      body.offer ? JSON.stringify(body.offer) : null,
+      body.offer ? nowIso() : null,
       nowIso(),
     );
     return c.json(toWish(getWish(id)!), 201);
@@ -158,14 +164,24 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     const result = await captureOrder(env.paypal, c.req.param("orderId"));
     if (result.status === "COMPLETED") {
       db.prepare(
-        "INSERT INTO transactions (id, date, amount_cents, currency, merchant, category, source) VALUES (?, ?, ?, ?, ?, 'wishlist', 'paypal')",
-      ).run(result.id, nowIso(), offer.priceCents, offer.currency, offer.domain);
+        "INSERT INTO transactions (id, date, amount_cents, currency, merchant, category, source, saved_cents) VALUES (?, ?, ?, ?, ?, 'wishlist', 'paypal', ?)",
+      ).run(result.id, nowIso(), offer.priceCents, offer.currency, offer.domain, savingsCents(offer));
       db.prepare("DELETE FROM wishlist WHERE id = ?").run(wishId);
     }
     return c.json({ status: result.status, budget: budgetSummary() });
   });
 
-  const discover = registerDiscover(app, db, env.channel3Key);
+  // What Snagwise purchases saved against the stores' list prices, all time.
+  app.get("/api/savings", (c) => {
+    const row = db.prepare("SELECT COALESCE(SUM(saved_cents), 0) AS saved, COUNT(*) AS purchases FROM transactions WHERE source = 'paypal'").get() as {
+      saved: number;
+      purchases: number;
+    };
+    return c.json({ savedCents: row.saved, purchases: row.purchases });
+  });
+
+  const skills = registerSkills(app, db, env.communitySkills ?? []);
+  const discover = registerDiscover(app, db, env.channel3Key, () => skills.active().map((s) => s.skill));
 
   const wallet = () => (db.prepare("SELECT * FROM wishlist ORDER BY created_at DESC").all() as unknown as WishRow[]).map(toWish);
   const spending = () => {
@@ -181,6 +197,7 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
       spending,
       wallet,
       search: discover.search,
+      skills: skills.active,
       addToWallet: (offer, targetCents) => {
         const id = crypto.randomUUID();
         db.prepare(

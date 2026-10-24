@@ -6,7 +6,7 @@
   "scripts": {
     "build": "esbuild src/main.ts src/seed-demo.ts --bundle --platform=node --format=esm --target=node24 --outdir=dist --out-extension:.js=.mjs",
     "dev": "npm run build && node --env-file-if-exists=.env dist/main.mjs",
-    "start": "node dist/main.mjs",
+    "start": "node --env-file-if-exists=.env dist/main.mjs",
     "demo": "node dist/seed-demo.mjs"
   },
   "dependencies": {
