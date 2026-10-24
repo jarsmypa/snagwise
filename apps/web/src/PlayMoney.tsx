@@ -62,7 +62,7 @@ export function PlayMoney({ onWalletChange }: { onWalletChange: () => void }) {
   const wantForReal = async (offer: Offer) => {
     const target = Math.round(offer.priceCents * 0.85);
     try {
-      await api.addWishFromOffer(offer, target);
+      await api.addWishFromOffer(offer, target, "play");
       setWatching((w) => ({ ...w, [offer.productId]: target }));
       onWalletChange();
     } catch (err) {

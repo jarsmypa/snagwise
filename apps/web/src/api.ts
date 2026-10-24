@@ -1,4 +1,12 @@
-import type { Offer, PlayResult, Reason, Skill, TasteProfile, Transaction, Verdict } from "@snagwise/core";
+import type { AchievementState, Offer, PlayResult, Reason, Skill, TasteProfile, TitleId, Transaction, Verdict } from "@snagwise/core";
+
+export interface Me {
+  title: TitleId;
+  styles: TitleId[];
+  tags: string[];
+  achievements: (AchievementState & { unlockedAt: string | null })[];
+  newlyUnlocked: string[];
+}
 
 export interface PriceAlert {
   id: string;
@@ -163,5 +171,7 @@ export const api = {
   playStore: () => request<{ sample: boolean; items: Offer[] }>("/api/play/store"),
   playCheckout: (budgetCents: number, items: Offer[]) =>
     request<{ result: PlayResult; learned: string[] }>("/api/play/checkout", send("POST", { budgetCents, items })),
-  addWishFromOffer: (offer: Offer, targetCents: number) => request<Wish>("/api/wishlist", send("POST", { query: offer.title, targetCents, offer })),
+  addWishFromOffer: (offer: Offer, targetCents: number, from?: "play") =>
+    request<Wish>("/api/wishlist", send("POST", { query: offer.title, targetCents, offer, ...(from ? { from } : {}) })),
+  me: () => request<Me>("/api/me"),
 };

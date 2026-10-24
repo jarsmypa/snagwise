@@ -7,6 +7,7 @@ import { Assistant } from "./Assistant";
 import { SnagSkills } from "./SnagSkills";
 import { Logo } from "./Logo";
 import { Alerts } from "./Alerts";
+import { ShopperCard } from "./ShopperCard";
 import { LangSwitch, useI18n, type Key } from "./i18n";
 // AG Grid is the heaviest dependency: load it only when the Spending tab opens.
 const SpendingGrid = lazy(() => import("./SpendingGrid").then((m) => ({ default: m.SpendingGrid })));
@@ -166,17 +167,19 @@ export function App() {
                 </div>
               </div>
             )}
+            {/* Re-read the shopper card whenever something it counts may have changed. */}
+            <ShopperCard refreshKey={`${tab}-${alertsKey}-${txs.length}-${wishes.length}`} />
             <Alerts refreshKey={alertsKey} onOpenWallet={() => setTab("wallet")} />
             <LangSwitch />
           </div>
         </div>
       </header>
-      <main>
+      <main data-area={tab}>
         <div>
           <p className="tagline">{t("app.tagline")}</p>
           <nav className="tabs" aria-label={t("app.sections")}>
             {TABS.map((tb) => (
-              <button key={tb.id} className={tab === tb.id ? "active" : ""} aria-current={tab === tb.id ? "page" : undefined} onClick={() => setTab(tb.id)}>
+              <button key={tb.id} data-area={tb.id} className={tab === tb.id ? "active" : ""} aria-current={tab === tb.id ? "page" : undefined} onClick={() => setTab(tb.id)}>
                 {t(tb.label)}
               </button>
             ))}

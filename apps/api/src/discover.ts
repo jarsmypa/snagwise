@@ -1,7 +1,7 @@
 import type { Hono } from "hono";
 import { z } from "zod";
 import { buildProfile, scoreOffer, skillScore, topCategories, type Offer, type Reaction, type ShareStat, type Skill } from "@snagwise/core";
-import { nowIso, type DB } from "./db.js";
+import { logEvent, nowIso, type DB } from "./db.js";
 import { searchProducts } from "./channel3.js";
 import { SAMPLE_CATALOG } from "./sample-catalog.js";
 
@@ -151,6 +151,7 @@ export function registerDiscover(app: Hono, db: DB, channel3Key: string | undefi
     db.prepare(
       "INSERT INTO wishlist (id, query, target_cents, currency, best_offer, last_checked_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
     ).run(crypto.randomUUID(), offer.title, offer.priceCents, offer.currency, row.offer, row.created_at, nowIso());
+    logEvent(db, "wallet_add");
     db.exec("COMMIT");
     return c.json({ saved: true });
   });

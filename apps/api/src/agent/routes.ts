@@ -1,7 +1,7 @@
 import type { Hono } from "hono";
 import { z } from "zod";
 import type { Offer } from "@snagwise/core";
-import { nowIso, type DB } from "../db.js";
+import { logEvent, nowIso, type DB } from "../db.js";
 import { clientIp, RateLimiter } from "../guard.js";
 import { AllProvidersBusy, runAgent, type Handoff } from "./agent.js";
 import { anthropicProvider } from "./anthropic.js";
@@ -114,6 +114,7 @@ export function registerAgent(
     try {
       const result = await runAgent({ providers, rotation: opts.rotation, deps: opts.deps, session, message: body.message, context });
       recent.push({ user: body.message, assistant: result.reply, provider: result.provider });
+      if (result.handoffs.length) logEvent(db, "handoff", result.handoffs.length);
       const last = result.handoffs.at(-1);
       const md = context(last);
       const seen = JSON.stringify([...session.seen.entries()].slice(-SEEN_KEPT));

@@ -4,7 +4,8 @@ import { evaluateOffer, monthOf, remainingBudget, savingsCents, trackOffer, type
 import { registerSkills } from "./skills.js";
 import { recordPrice, registerAlerts, unreadAlerts } from "./watch.js";
 import { registerPlay } from "./play.js";
-import { nowIso, type DB } from "./db.js";
+import { registerMe } from "./me.js";
+import { logEvent, nowIso, type DB } from "./db.js";
 import { searchProducts } from "./channel3.js";
 import { captureOrder, createOrder, type PayPalConfig } from "./paypal.js";
 import { offerSchema, registerDiscover } from "./discover.js";
@@ -113,7 +114,7 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
   // From Discover the exact offer comes along, so the wallet has a price baseline before any search.
   app.post("/api/wishlist", async (c) => {
     const body = z
-      .object({ query: z.string().trim().min(2).max(200), targetCents: z.number().int().positive(), offer: offerSchema.optional() })
+      .object({ query: z.string().trim().min(2).max(200), targetCents: z.number().int().positive(), offer: offerSchema.optional(), from: z.enum(["play"]).optional() })
       .parse(await c.req.json());
     const id = crypto.randomUUID();
     db.prepare("INSERT INTO wishlist (id, query, target_cents, currency, best_offer, last_checked_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
@@ -125,6 +126,8 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
       body.offer ? nowIso() : null,
       nowIso(),
     );
+    logEvent(db, "wallet_add");
+    if (body.from === "play") logEvent(db, "want_real");
     return c.json(toWish(getWish(id)!), 201);
   });
   app.delete("/api/wishlist/:id", (c) => {
@@ -194,6 +197,7 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     profile: discover.profile,
     monthlyBudgetCents: () => budgetSummary().budgetCents,
   });
+  registerMe(app, db, { profile: discover.profile, budget: budgetSummary });
   const channel3 = env.channel3Key;
   registerAlerts(app, db, channel3 ? (q) => searchProducts(channel3, q, 10) : null);
 
@@ -218,6 +222,7 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
         db.prepare(
           "INSERT INTO wishlist (id, query, target_cents, currency, best_offer, last_checked_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
         ).run(id, offer.title, targetCents, offer.currency, JSON.stringify(offer), nowIso(), nowIso());
+        logEvent(db, "wallet_add");
         return id;
       },
     },

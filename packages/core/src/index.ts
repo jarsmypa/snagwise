@@ -113,3 +113,4 @@ export function formatMoney(cents: number): string {
 export * from "./taste.js";
 export * from "./skills.js";
 export * from "./play.js";
+export * from "./achievements.js";

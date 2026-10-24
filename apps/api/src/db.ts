@@ -92,7 +92,26 @@ const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE events (
+    kind TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX events_kind ON events(kind);
+  CREATE TABLE achievements (
+    id TEXT PRIMARY KEY,
+    unlocked_at TEXT NOT NULL
+  );
+  `,
 ];
+
+// Activity that no table keeps on its own (items ever added to the wallet, AI handoffs…), for achievements.
+export type EventKind = "wallet_add" | "want_real" | "handoff";
+
+export function logEvent(db: DB, kind: EventKind, times = 1): void {
+  const insert = db.prepare("INSERT INTO events (kind, created_at) VALUES (?, ?)");
+  for (let i = 0; i < times; i++) insert.run(kind, nowIso());
+}
 
 export function openDb(path: string): DB {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });

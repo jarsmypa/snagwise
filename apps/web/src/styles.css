@@ -16,6 +16,19 @@
   --deal: #f5c518; /* markdown sticker: signature, see rule above */
   --on-deal: #1a1915;
   --danger: #b3261e;
+  /* One color per area of the app (protocol: color means something). White text passes AA on each. */
+  --a-assistant: #1e5b43;
+  --a-assistant-tint: #e3eee7;
+  --a-discover: #b8432a;
+  --a-discover-tint: #fbe4dc;
+  --a-skills: #2c4f9e;
+  --a-skills-tint: #e2e9f8;
+  --a-wallet: #7b3a6b;
+  --a-wallet-tint: #f4e2ef;
+  --a-spending: #1d6b72;
+  --a-spending-tint: #dbeff0;
+  --area: var(--a-assistant);
+  --area-tint: var(--a-assistant-tint);
   --font-text: "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --font-num: "Atkinson Hyperlegible Mono", ui-monospace, monospace;
   --r-control: 6px;
@@ -34,6 +47,11 @@
     --brand-tint: #1b2a22;
     --on-brand: #ffffff;
     --danger: #ff8a80;
+    --a-assistant-tint: #1b2a22;
+    --a-discover-tint: #33201a;
+    --a-skills-tint: #1b2440;
+    --a-wallet-tint: #2f1a2a;
+    --a-spending-tint: #14292b;
   }
 }
 
@@ -275,7 +293,8 @@ label.button.file {
   padding: 0.55rem 1rem;
   border: 0;
   border-radius: var(--r-control);
-  background: var(--brand);
+  /* Primary actions take the color of the area they live in (green outside any area). */
+  background: var(--area);
   color: var(--on-brand);
   cursor: pointer;
   text-decoration: none;
@@ -285,12 +304,6 @@ label.button.file {
   gap: 0.4rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  button,
-  a.button {
-    background: #2f7d5c;
-  }
-}
 
 button.quiet,
 a.button.quiet,
@@ -948,4 +961,241 @@ label.button.file:focus-within {
 h3 {
   font-size: 1.05rem;
   margin: 0 0 0.25rem;
+}
+
+/* --- Areas: each tab has its own color for titles, primary actions and its tab marker --- */
+
+[data-area="assistant"] { --area: var(--a-assistant); --area-tint: var(--a-assistant-tint); }
+[data-area="discover"] { --area: var(--a-discover); --area-tint: var(--a-discover-tint); }
+[data-area="skills"] { --area: var(--a-skills); --area-tint: var(--a-skills-tint); }
+[data-area="wallet"] { --area: var(--a-wallet); --area-tint: var(--a-wallet-tint); }
+[data-area="spending"] { --area: var(--a-spending); --area-tint: var(--a-spending-tint); }
+
+main[data-area] section > h2:first-child {
+  background: var(--area-tint);
+  color: var(--area);
+  margin: 0 -0.25rem 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--r-control);
+}
+
+@media (prefers-color-scheme: dark) {
+  main[data-area] section > h2:first-child {
+    color: var(--ink);
+  }
+}
+
+main[data-area] .segmented button.on {
+  background: var(--area);
+}
+
+.tabs button::before {
+  content: "";
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--area);
+  opacity: 0.45;
+}
+
+.tabs button.active::before {
+  opacity: 1;
+}
+
+.tabs button.active {
+  border-bottom-color: var(--area);
+}
+
+@media (prefers-color-scheme: dark) {
+  .tabs button.active {
+    border-bottom-color: var(--area);
+  }
+}
+
+.bubble.user {
+  background: var(--a-assistant);
+}
+
+.store li.added {
+  border-color: var(--area);
+  box-shadow: inset 0 0 0 1px var(--area);
+}
+
+.cart-bar,
+.styles li {
+  background: var(--area-tint);
+}
+
+/* --- Shopper card (band button + panel) --- */
+
+.me-button {
+  background: transparent;
+  color: var(--on-brand);
+  border: 1px solid rgb(255 255 255 / 0.35);
+  gap: 0.4rem;
+  padding: 0 0.7rem;
+  font-weight: 700;
+  max-width: 13rem;
+}
+
+.me-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.me-card {
+  width: min(100%, 40rem);
+  justify-items: stretch;
+  /* Opened from the green header band: don't inherit its white text. */
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.me-hero {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-radius: var(--r-piece);
+  padding: 1rem 1.1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.me-hero .me-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.me-hero p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tags li {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--area-tint);
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.me-hero .tags li {
+  background: rgb(255 255 255 / 0.16);
+  color: var(--on-brand);
+}
+
+.achievements {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.6rem;
+}
+
+.achievements li {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 0.25rem 0.6rem;
+  align-items: start;
+  padding: 0.65rem;
+  border-radius: var(--r-piece);
+  background: var(--area-tint);
+  color: var(--ink);
+}
+
+.achievements li.locked {
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  color: var(--muted);
+}
+
+.achievements svg {
+  width: 2.5rem;
+  height: 2.5rem;
+  grid-row: span 3;
+  color: var(--area);
+}
+
+.achievements li.locked svg {
+  color: var(--line);
+}
+
+.achievements strong {
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+
+.achievements .desc {
+  font-size: 0.8rem;
+}
+
+.achievements .bar {
+  margin: 0.25rem 0 0;
+  height: 0.35rem;
+}
+
+.achievements .bar > div {
+  background: var(--area);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: min(26rem, calc(100vw - 2rem));
+  padding: 0.75rem 1rem;
+  border-radius: var(--r-piece);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+
+.toast svg {
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: none;
+  color: var(--area);
+}
+
+.toast button {
+  background: transparent;
+  color: var(--paper);
+  border: 1px solid rgb(255 255 255 / 0.3);
+  min-height: 36px;
+  padding: 0 0.6rem;
+}
+
+/* Phones: the budget gets its own row in the band; title, bell and language share the next one. */
+@media (max-width: 36rem) {
+  .band-tools {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .left-to-spend {
+    flex: 1 1 100%;
+  }
+
+  .me-button {
+    flex: 1 1 auto;
+    max-width: none;
+    justify-content: flex-start;
+  }
 }
