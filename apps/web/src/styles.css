@@ -522,3 +522,7 @@ label.button.file:focus-within {
   width: 100%;
   min-height: 160px;
 }
+
+.bubble .reply {
+  white-space: pre-wrap;
+}

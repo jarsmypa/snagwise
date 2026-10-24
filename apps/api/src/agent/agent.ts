@@ -77,9 +77,11 @@ export async function runAgent(opts: {
       return { reply: "That took more steps than I can do at once. Could you narrow it down?", provider: provider.label, handoffs, proposals: session.proposals };
     } catch (err) {
       if (err instanceof QuotaError) {
+        console.warn(`AI provider ${provider.label} hit its limit; rotating.`);
         rotation.limited(provider.id, err.retryAfterMs);
         failed = { label: provider.label, reason: "usage limit reached" };
       } else if (err instanceof ProviderError) {
+        console.warn(`AI provider ${provider.label} failed: ${err.message}`);
         rotation.limited(provider.id, 60_000);
         failed = { label: provider.label, reason: "provider error" };
       } else {

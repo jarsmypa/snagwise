@@ -7,6 +7,7 @@ import {
   savingsCents,
   spentInMonth,
   toCents,
+  trackOffer,
   type Offer,
   type Transaction,
   type WishItem,
@@ -60,6 +61,18 @@ describe("offers", () => {
   it("picks the cheapest offer in the currency", () => {
     const offers = [offer(9_000), offer(7_000), offer(5_000, { currency: "EUR" })];
     expect(bestOffer(offers, "USD")?.priceCents).toBe(7_000);
+  });
+
+  it("re-prices the same product, never a cheaper lookalike", () => {
+    const saved = offer(11_995, { productId: "jvc", title: "JVC Wireless Headphones" });
+    const results = [
+      offer(8_800, { productId: "sony", title: "Sony WH-CH720N Wireless Headphones" }),
+      offer(11_499, { productId: "jvc", title: "JVC Wireless Headphones", domain: "bestbuy.com" }),
+    ];
+    expect(trackOffer(saved, results, "USD")?.productId).toBe("jvc");
+    expect(trackOffer(saved, [offer(10_000, { productId: "other", title: "jvc wireless headphones!" })], "USD")?.priceCents).toBe(10_000);
+    expect(trackOffer(saved, [results[0]!], "USD")).toBeUndefined();
+    expect(trackOffer(null, results, "USD")?.productId).toBe("sony");
   });
 
   it("reports savings only against a higher list price", () => {

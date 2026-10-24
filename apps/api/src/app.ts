@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { bestOffer, evaluateOffer, monthOf, remainingBudget, savingsCents, type Offer, type Skill, type Transaction } from "@snagwise/core";
+import { evaluateOffer, monthOf, remainingBudget, savingsCents, trackOffer, type Offer, type Skill, type Transaction } from "@snagwise/core";
 import { registerSkills } from "./skills.js";
 import { nowIso, type DB } from "./db.js";
 import { searchProducts } from "./channel3.js";
@@ -132,9 +132,11 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     if (!env.channel3Key) return c.json({ error: "CHANNEL3_API_KEY is not set" }, 503);
     const row = getWish(c.req.param("id"));
     if (!row) return c.json({ error: "Not found" }, 404);
-    const offer = bestOffer(await searchProducts(env.channel3Key, row.query), row.currency);
+    const saved = row.best_offer ? (JSON.parse(row.best_offer) as Offer) : null;
+    const offer = trackOffer(saved, await searchProducts(env.channel3Key, row.query), row.currency);
+    // Not found right now: keep the last known offer, but don't propose buying on a stale price.
     db.prepare("UPDATE wishlist SET best_offer = ?, last_checked_at = ? WHERE id = ?").run(
-      offer ? JSON.stringify(offer) : null,
+      offer ? JSON.stringify(offer) : row.best_offer,
       nowIso(),
       row.id,
     );

@@ -74,6 +74,21 @@ export function bestOffer(offers: readonly Offer[], currency: string): Offer | u
     .reduce<Offer | undefined>((best, o) => (best === undefined || o.priceCents < best.priceCents ? o : best), undefined);
 }
 
+const normTitle = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+// Re-pricing a wallet item must follow the SAME product, never the cheapest lookalike from a text search:
+// same product id first, then the same title. Without a saved offer, the cheapest result is the starting point.
+export function trackOffer(saved: Offer | null, offers: readonly Offer[], currency: string): Offer | undefined {
+  if (!saved) return bestOffer(offers, currency);
+  const sameId = offers.filter((o) => o.productId === saved.productId);
+  if (sameId.length) return bestOffer(sameId, currency);
+  const title = normTitle(saved.title);
+  return bestOffer(
+    offers.filter((o) => normTitle(o.title) === title),
+    currency,
+  );
+}
+
 export function toCents(amount: number): number {
   return Math.round(amount * 100);
 }

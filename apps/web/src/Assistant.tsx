@@ -16,6 +16,17 @@ const BYOK_KEY = "snagwise.byok";
 const AI_CHOICE_KEY = "snagwise.ai";
 const AUTO = "auto";
 
+// Models often answer with **bold**: show it as bold, as React elements (never as HTML).
+function RichText({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+        part.startsWith("**") && part.endsWith("**") && part.length > 4 ? <strong key={i}>{part.slice(2, -2)}</strong> : part,
+      )}
+    </>
+  );
+}
+
 // Provider id the server gives a connected personal key.
 const byokId = (b: Byok) => (b.provider === "anthropic" ? "anthropic" : `byok-${b.provider}`);
 const money = (cents: number) => `$${formatCents(cents)}`;
@@ -154,7 +165,9 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
                   {h.from} stopped ({h.reason}). {h.to} took over from the context file.
                 </p>
               ))}
-              <p>{m.reply}</p>
+              <p className="reply">
+                <RichText text={m.reply} />
+              </p>
               {m.proposals.map((p) => (
                 <div key={p.wishId} className="proposal">
                   <strong>

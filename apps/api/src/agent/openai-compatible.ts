@@ -18,7 +18,8 @@ export interface CompatibleConfig {
 }
 
 export const PRESETS = {
-  gemini: { name: "Gemini", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-3.8-flash" },
+  // gemini-3.8-flash often answers 503 "high demand" on the free tier (Oct 2026); 3.5-flash is fast and reliable.
+  gemini: { name: "Gemini", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-3.5-flash" },
   groq: { name: "Groq", baseUrl: "https://api.groq.com/openai/v1", model: "qwen/qwen3.8-27b" },
   openrouter: { name: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", model: "" }, // pick a ":free" model id
 } as const;
@@ -32,11 +33,14 @@ interface ChatMessage {
   tool_call_id?: string;
 }
 
-const toMessages = (system: string, turns: Turn[]): ChatMessage[] => [
+const toMessages = (providerId: string, system: string, turns: Turn[]): ChatMessage[] => [
   { role: "system", content: system },
   ...turns.map((t): ChatMessage => {
     if (t.role === "user") return { role: "user", content: t.text };
     if (t.role === "tool") return { role: "tool", tool_call_id: t.callId, content: t.content };
+    // Replay the provider's own assistant message unchanged: Gemini attaches a thought_signature to
+    // tool calls (extra_content.google) and rejects the follow-up request without it.
+    if (t.raw?.provider === providerId) return t.raw.content as ChatMessage;
     const msg: ChatMessage = { role: "assistant", content: t.text || null };
     if (t.toolCalls.length) {
       msg.tool_calls = t.toolCalls.map((c) => ({ id: c.id, type: "function", function: { name: c.name, arguments: JSON.stringify(c.args) } }));
@@ -62,7 +66,7 @@ export function compatibleProvider(cfg: CompatibleConfig, fetchImpl: typeof fetc
           headers: { authorization: `Bearer ${cfg.apiKey}`, "content-type": "application/json" },
           body: JSON.stringify({
             model: cfg.model,
-            messages: toMessages(system, turns),
+            messages: toMessages(cfg.id, system, turns),
             tools: tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.parameters } })),
             tool_choice: "auto",
           }),
@@ -73,7 +77,11 @@ export function compatibleProvider(cfg: CompatibleConfig, fetchImpl: typeof fetc
       }
       // 429 = rate or daily limit; 402 = OpenRouter out of credit. Both mean "use another provider for a while".
       if (res.status === 429 || res.status === 402) throw new QuotaError(cfg.id, retryAfterMs(res));
-      if (!res.ok) throw new ProviderError(cfg.id, `HTTP ${res.status}`);
+      if (!res.ok) {
+        // Keep the provider's own explanation (invalid key, unknown model, overloaded…) for the server log.
+        const detail = (await res.text().catch(() => "")).replaceAll(cfg.apiKey, "[key]").replace(/\s+/g, " ").slice(0, 200);
+        throw new ProviderError(cfg.id, `HTTP ${res.status} ${detail}`);
+      }
 
       const body = (await res.json()) as { choices?: { message?: { content?: string | null; tool_calls?: ChatMessage["tool_calls"] } }[] };
       const message = body.choices?.[0]?.message;
@@ -87,7 +95,7 @@ export function compatibleProvider(cfg: CompatibleConfig, fetchImpl: typeof fetc
         }
         return { id: c.id, name: c.function.name, args };
       });
-      return { text: message.content ?? "", toolCalls };
+      return { text: message.content ?? "", toolCalls, raw: { ...message, role: "assistant" } };
     },
   };
 }

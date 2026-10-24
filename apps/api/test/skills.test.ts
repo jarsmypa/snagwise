@@ -99,6 +99,16 @@ describe("wallet extras", () => {
     expect(item?.bestOffer?.priceCents).toBe(3_200);
   });
 
+  it("keeps watching the saved product, not a cheaper lookalike", async () => {
+    const { db, app } = setup();
+    const jvc: Offer = { productId: "jvc", title: "JVC Headphones", url: "https://kohls.com/j", domain: "kohls.com", priceCents: 11_995, currency: "USD" };
+    await app.request("/api/wishlist", json("POST", { query: "JVC Headphones", targetCents: 12_500, offer: jvc }));
+    const sony: Offer = { ...jvc, productId: "sony", title: "Sony Headphones", priceCents: 8_800 };
+    await refreshWalletPrices(db, async () => [sony, { ...jvc, priceCents: 11_499 }]);
+    const [item] = (await (await app.request("/api/wishlist")).json()) as { bestOffer: Offer }[];
+    expect(item!.bestOffer).toMatchObject({ productId: "jvc", priceCents: 11_499 });
+  });
+
   it("reports savings from purchases", async () => {
     const { app } = setup();
     expect(await (await app.request("/api/savings")).json()).toEqual({ savedCents: 0, purchases: 0 });

@@ -74,8 +74,10 @@ export function buildContextMd(c: ContextInput): string {
 
   if (c.recent.length) {
     lines.push("", "## Recent conversation");
+    // One line per message, so multi-line replies don't break the list (or fake new sections).
+    const flat = (s: string) => s.replace(/\s*\n+\s*/g, " ").trim();
     for (const r of c.recent.slice(-RECENT_TURNS)) {
-      lines.push(`- User: ${r.user}`, `- Snagwise (${r.provider}): ${r.assistant}`);
+      lines.push(`- User: ${flat(r.user)}`, `- Snagwise (${r.provider}): ${flat(r.assistant)}`);
     }
   }
 

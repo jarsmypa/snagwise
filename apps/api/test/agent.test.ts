@@ -178,6 +178,28 @@ describe("openai-compatible adapter", () => {
     expect(reply.toolCalls).toEqual([{ id: "c1", name: "search_products", args: { query: "tents" } }]);
   });
 
+  it("replays its own assistant message unchanged, keeping Gemini's thought_signature", async () => {
+    const assistant = {
+      role: "assistant",
+      content: null,
+      tool_calls: [{ id: "c1", type: "function", function: { name: "get_budget", arguments: "{}" }, extra_content: { google: { thought_signature: "sig" } } }],
+    };
+    const bodies: { messages: unknown[] }[] = [];
+    const fake = (async (_url: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)) as { messages: unknown[] });
+      const message = bodies.length === 1 ? assistant : { role: "assistant", content: "done" };
+      return new Response(JSON.stringify({ choices: [{ message }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const p = compatibleProvider({ ...cfg, id: "gemini" }, fake);
+    const first = await p.complete("sys", [{ role: "user", text: "hi" }], []);
+    await p.complete("sys", [
+      { role: "user", text: "hi" },
+      { role: "assistant", text: "", toolCalls: first.toolCalls, raw: { provider: "gemini", content: first.raw } },
+      { role: "tool", callId: "c1", name: "get_budget", content: "{}" },
+    ], []);
+    expect(bodies[1]!.messages[2]).toEqual(assistant);
+  });
+
   it("turns 429 into a quota error with Retry-After", async () => {
     const fake = (async () => new Response("{}", { status: 429, headers: { "retry-after": "20" } })) as typeof fetch;
     await expect(compatibleProvider(cfg, fake).complete("sys", [], [])).rejects.toMatchObject({ provider: "groq", retryAfterMs: 20_000 });
