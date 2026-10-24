@@ -1,10 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
-import { formatCents, monthOf, savingsCents, toCents, type Transaction, type Verdict } from "@snagwise/core";
+import { formatMoney, monthOf, savingsCents, toCents, type Transaction, type Verdict } from "@snagwise/core";
 import { api, ApiError, setAccessCode, type Budget, type Config, type Health, type Wish } from "./api";
 import { PayPalButton } from "./PayPalButton";
 import { Discover } from "./Discover";
 import { Assistant } from "./Assistant";
 import { SnagSkills } from "./SnagSkills";
+import { Logo } from "./Logo";
 // AG Grid is the heaviest dependency: load it only when the Spending tab opens.
 const SpendingGrid = lazy(() => import("./SpendingGrid").then((m) => ({ default: m.SpendingGrid })));
 
@@ -24,7 +25,9 @@ const VERDICT_TEXT: Record<Verdict["reason"], string> = {
   currency_mismatch: "Only offered in another currency.",
 };
 
-const money = (cents: number) => `$${formatCents(cents)}`;
+const money = formatMoney;
+// "2026-10" → "October"
+const monthName = (ym: string) => new Date(`${ym}-15T12:00:00Z`).toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
 
 // Working screens for the end-to-end flow. The agent chat and the design pass land in week 2.
 export function App() {
@@ -111,30 +114,47 @@ export function App() {
 
   if (needAccess) {
     return (
-      <main>
-        <h1>Snagwise</h1>
-        <p className="lede">This demo is private. Enter the access code from the submission's testing instructions.</p>
-        <form onSubmit={submitAccess} className="row">
-          <label className="grow">
-            Access code
-            <input name="code" type="password" required autoComplete="off" />
-          </label>
-          <button>Enter</button>
-        </form>
-      </main>
+      <>
+        <header className="band">
+          <div className="band-inner">
+            <Logo />
+          </div>
+        </header>
+        <main>
+          <p className="tagline">This demo is private. Enter the access code from the submission's testing instructions.</p>
+          <form onSubmit={submitAccess} className="row">
+            <label className="grow">
+              Access code
+              <input name="code" type="password" required autoComplete="off" />
+            </label>
+            <button>Enter</button>
+          </form>
+        </main>
+      </>
     );
   }
 
+  const spentShare = budget && budget.budgetCents ? Math.min(100, (budget.spentCents / budget.budgetCents) * 100) : 0;
+
   return (
+    <>
+      <header className="band">
+        <div className="band-inner">
+          <Logo />
+          {budget && (
+            <div className="left-to-spend" aria-live="polite">
+              <strong>{money(budget.remainingCents)}</strong>
+              left to spend in {monthName(budget.month)} · of {money(budget.budgetCents)}
+              <div className="meter" role="progressbar" aria-label="Budget used" aria-valuemin={0} aria-valuemax={budget.budgetCents} aria-valuenow={budget.spentCents}>
+                <div style={{ width: `${spentShare}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+      </header>
     <main>
-      <header>
-        <h1>Snagwise</h1>
-        <p className="lede">Tell it what you like and what you can spend. It finds the deal, watches the price and buys with PayPal when it fits.</p>
-        {health && (
-          <p className="hint">
-            Product search {health.channel3 ? "connected" : "needs a key"} · PayPal sandbox {health.paypal ? "connected" : "needs credentials"}
-          </p>
-        )}
+      <div>
+        <p className="tagline">Tell it what you like and what you can spend. It finds the deal, watches the price, and you approve every purchase in PayPal.</p>
         <nav className="tabs" aria-label="Sections">
           {TABS.map((t) => (
             <button key={t.id} className={tab === t.id ? "active" : ""} aria-current={tab === t.id ? "page" : undefined} onClick={() => setTab(t.id)}>
@@ -142,7 +162,7 @@ export function App() {
             </button>
           ))}
         </nav>
-      </header>
+      </div>
 
       {error && <p role="alert">{error}</p>}
 
@@ -150,61 +170,49 @@ export function App() {
       {tab === "discover" && <Discover onWalletChange={() => void refresh()} />}
       {tab === "skills" && <SnagSkills />}
 
-      {tab === "wallet" && budget && (
-        <section aria-labelledby="budget-title">
-          <h2 id="budget-title">This month</h2>
-          <p className="big">
-            {money(budget.remainingCents)} <span className="hint">left of {money(budget.budgetCents)}</span>
-          </p>
-          <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={budget.budgetCents} aria-valuenow={budget.spentCents}>
-            <div style={{ width: `${Math.min(100, budget.budgetCents ? (budget.spentCents / budget.budgetCents) * 100 : 0)}%` }} />
-          </div>
-          <form onSubmit={saveBudget} className="row">
-            <label>
-              Monthly budget ($)
-              <input name="budget" type="number" min="0" step="1" defaultValue={budget.budgetCents / 100} key={budget.budgetCents} />
-            </label>
-            <button disabled={busy === "budget"}>Save</button>
-          </form>
-        </section>
-      )}
-
       {tab === "wallet" && (
       <section aria-labelledby="wallet-title">
         <h2 id="wallet-title">Wallet</h2>
+        <p className="hint">What you are watching. Snagwise re-checks prices and only offers to buy at or under your target, within the budget.</p>
         <form onSubmit={addWish} className="row">
           <label className="grow">
             What do you want?
             <input name="query" required minLength={2} placeholder="noise cancelling headphones" />
           </label>
           <label>
-            Target ($)
+            Target price ($)
             <input name="target" type="number" required min="1" step="0.01" />
           </label>
-          <button disabled={busy === "add"}>Save</button>
+          <button disabled={busy === "add"}>Watch it</button>
         </form>
-        {wishes.length === 0 && <p className="hint">Nothing saved yet.</p>}
+        {wishes.length === 0 && <p className="hint">Nothing here yet. Save something from the Assistant or Discover, or type it above.</p>}
         <ul className="cards">
           {wishes.map((w) => {
             const verdict = verdicts[w.id];
             const offer = w.bestOffer;
+            const atTarget = offer !== null && offer.priceCents <= w.targetCents;
             return (
               <li key={w.id} className="card">
                 <div className="row spread">
                   <strong>{w.query}</strong>
-                  <span className="hint">target {money(w.targetCents)}</span>
+                  <span className="hint">
+                    target <span className="money">{money(w.targetCents)}</span>
+                  </span>
                 </div>
                 {offer ? (
-                  <p>
-                    Best offer: <a href={offer.url} target="_blank" rel="noreferrer">{offer.title}</a> — {money(offer.priceCents)} at {offer.domain}
-                    {savingsCents(offer) > 0 && <span className="hint"> (save {money(savingsCents(offer))})</span>}
+                  <p className="row" style={{ alignItems: "center" }}>
+                    <span>
+                      <a href={offer.url} target="_blank" rel="noreferrer">{offer.title}</a> at {offer.domain}:{" "}
+                      <span className="money">{money(offer.priceCents)}</span>
+                    </span>
+                    {atTarget && <span className="deal">At your price{savingsCents(offer) > 0 ? ` · save ${money(savingsCents(offer))}` : ""}</span>}
                   </p>
                 ) : (
                   <p className="hint">Price not checked yet.</p>
                 )}
                 {verdict !== undefined && <p>{verdict ? VERDICT_TEXT[verdict.reason] : "No offers found right now."}</p>}
                 <div className="row">
-                  <button onClick={() => void check(w.id)} disabled={busy === `check-${w.id}`}>
+                  <button className="quiet" onClick={() => void check(w.id)} disabled={busy === `check-${w.id}`}>
                     {busy === `check-${w.id}` ? "Checking…" : "Check price"}
                   </button>
                   <button className="quiet" onClick={() => void run(`rm-${w.id}`, async () => { await api.removeWish(w.id); await refresh(); })}>
@@ -239,12 +247,36 @@ export function App() {
           </Suspense>
         )}
         {savings && savings.purchases > 0 && (
-          <p className="hint">
-            {savings.purchases} purchase(s) through Snagwise · you saved {money(savings.savedCents)} against list prices.
+          <p className="savings-line">
+            {savings.purchases === 1 ? "1 purchase" : `${savings.purchases} purchases`} through Snagwise
+            {savings.savedCents > 0 && <span className="deal">saved {money(savings.savedCents)} vs. list prices</span>}
           </p>
         )}
       </section>
       )}
+
+      {tab === "wallet" && budget && (
+        <section aria-labelledby="budget-title">
+          <hr className="tear" />
+          <h2 id="budget-title">Monthly budget</h2>
+          <p className="hint">Snagwise never proposes a purchase that would go over it.</p>
+          <form onSubmit={saveBudget} className="row">
+            <label>
+              Budget for {monthName(budget.month)} ($)
+              <input name="budget" type="number" min="0" step="1" defaultValue={budget.budgetCents / 100} key={budget.budgetCents} />
+            </label>
+            <button disabled={busy === "budget"}>Save budget</button>
+          </form>
+        </section>
+      )}
+
+      {health && (
+        <footer className="status">
+          Product search: {health.channel3 ? "Channel3 (live catalog)" : "sample catalog (dev only)"} · Payments: {health.paypal ? "PayPal sandbox" : "PayPal not set up"} · AI answers can be wrong; you approve
+          every purchase.
+        </footer>
+      )}
     </main>
+    </>
   );
 }

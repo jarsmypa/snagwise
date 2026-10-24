@@ -1,4 +1,4 @@
-import { formatCents, topCategories, type Offer, type Skill, type TasteProfile } from "@snagwise/core";
+import { formatMoney, topCategories, type Offer, type Skill, type TasteProfile } from "@snagwise/core";
 
 /*
   The handoff file. Every agent request starts from this Markdown instead of a provider-specific
@@ -18,7 +18,7 @@ export interface ContextInput {
   handoff?: { from: string; to: string; reason: string };
 }
 
-const money = (cents: number) => `$${formatCents(cents)}`;
+const money = formatMoney;
 const RECENT_TURNS = 6;
 const NOTES_KEPT = 15;
 

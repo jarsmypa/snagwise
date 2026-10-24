@@ -93,8 +93,14 @@ export function toCents(amount: number): number {
   return Math.round(amount * 100);
 }
 
+// Plain decimal for APIs (PayPal amounts must not have separators).
 export function formatCents(cents: number): string {
   return (cents / 100).toFixed(2);
+}
+
+// For people: "$1,500.00".
+export function formatMoney(cents: number): string {
+  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export * from "./taste.js";

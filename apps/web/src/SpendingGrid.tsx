@@ -1,23 +1,23 @@
 import { useMemo } from "react";
-import { ClientSideRowModelModule, ModuleRegistry, TextFilterModule, themeQuartz, type ColDef, type ValueFormatterParams } from "ag-grid-community";
+import { CellStyleModule, ClientSideRowModelModule, ModuleRegistry, TextFilterModule, themeQuartz, type ColDef, type ValueFormatterParams } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { formatCents, type Transaction } from "@snagwise/core";
+import { formatMoney, type Transaction } from "@snagwise/core";
 
 // Only the modules this table uses, to keep the bundle small.
-ModuleRegistry.registerModules([ClientSideRowModelModule, TextFilterModule]);
+ModuleRegistry.registerModules([ClientSideRowModelModule, TextFilterModule, CellStyleModule]);
 
 // Colors come from the app's CSS tokens, so the grid follows light and dark mode with the rest of the page.
 const theme = themeQuartz.withParams({
   backgroundColor: "var(--surface)",
-  foregroundColor: "var(--text)",
+  foregroundColor: "var(--ink)",
   borderColor: "var(--line)",
-  headerBackgroundColor: "var(--bg)",
-  accentColor: "var(--accent)",
+  headerBackgroundColor: "var(--paper)",
+  accentColor: "var(--brand)",
   fontFamily: "inherit",
   fontSize: 14,
 });
 
-const money = (p: ValueFormatterParams<Transaction, number>) => (p.value == null ? "" : `$${formatCents(p.value)}`);
+const money = (p: ValueFormatterParams<Transaction, number>) => (p.value == null ? "" : formatMoney(p.value));
 
 // Sortable, filterable spending table (AG Grid Community). Groups by category through the filter.
 export function SpendingGrid({ rows }: { rows: Transaction[] }) {
@@ -26,7 +26,7 @@ export function SpendingGrid({ rows }: { rows: Transaction[] }) {
       { field: "date", headerName: "Date", valueFormatter: (p) => (p.value ? String(p.value).slice(0, 10) : ""), sort: "desc", width: 120 },
       { field: "merchant", headerName: "Merchant", flex: 1, minWidth: 140, filter: true },
       { field: "category", headerName: "Category", width: 150, filter: true },
-      { field: "amountCents", headerName: "Amount", valueFormatter: money, type: "rightAligned", width: 120 },
+      { field: "amountCents", headerName: "Amount", valueFormatter: money, type: "rightAligned", width: 120, cellStyle: { fontFamily: "var(--font-num)" } },
     ],
     [],
   );

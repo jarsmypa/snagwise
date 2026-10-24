@@ -88,7 +88,7 @@ export function SnagSkills() {
             )}
             <div className="row">
               <button
-                className={s.active ? "quiet" : ""}
+                className={s.active ? "" : "quiet"}
                 aria-pressed={s.active}
                 onClick={() => void run(() => api.setSkillActive(s.id, !s.active))}
               >

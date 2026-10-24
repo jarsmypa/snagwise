@@ -52,6 +52,9 @@ const toTx = (r: TxRow): Transaction => ({
   category: r.category,
 });
 
+// Purchases land in Spending under the product's own category, like any other expense.
+const purchaseCategory = (offer: Offer) => offer.category?.trim().toLowerCase() || "snagwise purchase";
+
 const toWish = (r: WishRow) => ({
   id: r.id,
   query: r.query,
@@ -166,8 +169,8 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     const result = await captureOrder(env.paypal, c.req.param("orderId"));
     if (result.status === "COMPLETED") {
       db.prepare(
-        "INSERT INTO transactions (id, date, amount_cents, currency, merchant, category, source, saved_cents) VALUES (?, ?, ?, ?, ?, 'wishlist', 'paypal', ?)",
-      ).run(result.id, nowIso(), offer.priceCents, offer.currency, offer.domain, savingsCents(offer));
+        "INSERT INTO transactions (id, date, amount_cents, currency, merchant, category, source, saved_cents) VALUES (?, ?, ?, ?, ?, ?, 'paypal', ?)",
+      ).run(result.id, nowIso(), offer.priceCents, offer.currency, offer.domain, purchaseCategory(offer), savingsCents(offer));
       db.prepare("DELETE FROM wishlist WHERE id = ?").run(wishId);
     }
     return c.json({ status: result.status, budget: budgetSummary() });

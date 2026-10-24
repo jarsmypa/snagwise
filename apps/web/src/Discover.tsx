@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
-import { formatCents, savingsCents, topCategories, type Offer, type Reason } from "@snagwise/core";
+import { formatMoney, savingsCents, topCategories, type Offer, type Reason } from "@snagwise/core";
 import { api } from "./api";
 import { ShareCard } from "./ShareCard";
 
 const SWIPE_THRESHOLD = 110;
-const money = (cents: number) => `$${formatCents(cents)}`;
+const money = formatMoney;
 
 type Stage = { kind: "browse" } | { kind: "why" } | { kind: "liked"; reasons: Reason[] };
 
@@ -143,8 +143,8 @@ export function Discover({ onWalletChange }: { onWalletChange: () => void }) {
               </span>
               <p className="price">
                 {money(card.priceCents)}
-                {card.compareAtCents !== undefined && <s className="hint"> {money(card.compareAtCents)}</s>}
-                {savingsCents(card) > 0 && <span className="save"> save {money(savingsCents(card))}</span>}
+                {card.compareAtCents !== undefined && card.compareAtCents > card.priceCents && <s>{money(card.compareAtCents)}</s>}
+                {savingsCents(card) > 0 && <span className="deal">save {money(savingsCents(card))}</span>}
               </p>
             </div>
             {drag !== 0 && <span className={`stamp ${drag > 0 ? "yes" : "no"}`}>{drag > 0 ? "LIKE" : "NOPE"}</span>}
@@ -165,9 +165,9 @@ export function Discover({ onWalletChange }: { onWalletChange: () => void }) {
             <div className="panel">
               <p>What did you like?</p>
               <div className="row center">
-                <button onClick={() => void answer(true, ["product"])}>The product</button>
-                <button onClick={() => void answer(true, ["price"])}>The price</button>
-                <button onClick={() => void answer(true, ["product", "price"])}>Both</button>
+                <button className="quiet" onClick={() => void answer(true, ["product"])}>The product</button>
+                <button className="quiet" onClick={() => void answer(true, ["price"])}>The price</button>
+                <button className="quiet" onClick={() => void answer(true, ["product", "price"])}>Both</button>
               </div>
               <button className="link" onClick={() => setStage({ kind: "browse" })}>
                 Cancel
@@ -180,7 +180,7 @@ export function Discover({ onWalletChange }: { onWalletChange: () => void }) {
               <p>{note ?? "Noted. What next?"}</p>
               <div className="row center">
                 {!note && <button onClick={() => void saveToWallet(card, stage.reasons)}>Save to wallet</button>}
-                <button onClick={() => setSharing(card)}>Recommend</button>
+                <button className="quiet" onClick={() => setSharing(card)}>Recommend</button>
                 <button className="quiet" onClick={next}>
                   Next deal
                 </button>

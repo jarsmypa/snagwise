@@ -1,4 +1,4 @@
-import { evaluateOffer, formatCents, scoreOffer, skillScore, toCents, topCategories, type Offer, type Skill, type TasteProfile } from "@snagwise/core";
+import { evaluateOffer, formatMoney, scoreOffer, skillScore, toCents, topCategories, type Offer, type Skill, type TasteProfile } from "@snagwise/core";
 import type { ToolCall, ToolSpec } from "./types.js";
 
 /*
@@ -32,7 +32,7 @@ export interface ToolSession {
   walletChanged: boolean;
 }
 
-const money = (cents: number) => `$${formatCents(cents)}`;
+const money = formatMoney;
 const noArgs: ToolSpec["parameters"] = { type: "object", properties: {}, required: [], additionalProperties: false };
 
 export const TOOL_SPECS: ToolSpec[] = [

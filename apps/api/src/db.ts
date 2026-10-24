@@ -70,6 +70,10 @@ const MIGRATIONS: string[] = [
   );
   ALTER TABLE transactions ADD COLUMN saved_cents INTEGER NOT NULL DEFAULT 0;
   `,
+  // Early purchases were filed under the internal "wishlist" category.
+  `
+  UPDATE transactions SET category = 'snagwise purchase' WHERE source = 'paypal' AND category = 'wishlist';
+  `,
 ];
 
 export function openDb(path: string): DB {

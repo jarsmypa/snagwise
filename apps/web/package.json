@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/atkinson-hyperlegible-mono": "5.3.0",
+    "@fontsource/atkinson-hyperlegible-next": "5.3.0",
     "@snagwise/core": "*",
     "ag-grid-community": "36.2.0",
     "ag-grid-react": "36.2.0",

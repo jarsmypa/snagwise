@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { formatCents } from "@snagwise/core";
+import { formatMoney } from "@snagwise/core";
 import { api, ApiError, storage, type AgentReply, type Byok, type Config } from "./api";
 import { PayPalButton } from "./PayPalButton";
 
@@ -10,6 +10,14 @@ const PROVIDERS: { id: Byok["provider"]; label: string; hint: string }[] = [
   { id: "gemini", label: "Gemini (Google AI Studio)", hint: "Free tier available" },
   { id: "groq", label: "Groq", hint: "Free tier available" },
   { id: "openrouter", label: "OpenRouter", hint: "Set a model, e.g. one ending in :free" },
+];
+
+// First-run prompts: each one exercises a different tool (budget, taste + search, wallet + purchase rules).
+const SUGGESTIONS = [
+  "What's left in my budget this month?",
+  "Find wireless earbuds under $80 that match my taste",
+  "Is anything in my wallet at my target price right now?",
+  "A gift under $50 for someone who loves coffee",
 ];
 
 const BYOK_KEY = "snagwise.byok";
@@ -29,7 +37,7 @@ function RichText({ text }: { text: string }) {
 
 // Provider id the server gives a connected personal key.
 const byokId = (b: Byok) => (b.provider === "anthropic" ? "anthropic" : `byok-${b.provider}`);
-const money = (cents: number) => `$${formatCents(cents)}`;
+const money = formatMoney;
 
 function loadByok(): Byok | null {
   try {
@@ -70,12 +78,16 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, busy]);
 
-  const send = async (e: FormEvent<HTMLFormElement>) => {
+  const send = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const message = String(new FormData(form).get("message") ?? "").trim();
     if (!message || busy) return;
     form.reset();
+    void ask(message);
+  };
+
+  const ask = async (message: string) => {
     setMessages((m) => [...m, { role: "user", text: message }]);
     setBusy(true);
     setError(null);
@@ -121,6 +133,11 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
   return (
     <section aria-labelledby="assistant-title">
       <h2 id="assistant-title">Assistant</h2>
+      <p className="ai-note">
+        Answers come from AI models and can be wrong. Prices come from live store listings, and nothing is bought until you approve it in PayPal.
+      </p>
+      {activeSkills.length > 0 && <p className="ai-note">Using SnagSkills: {activeSkills.join(", ")}.</p>}
+
       {freeProviders.length === 0 && !byok ? (
         <p className="hint">No free AI provider is set up on this server. Connect your own key below.</p>
       ) : (
@@ -147,12 +164,19 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
         </div>
       )}
 
-      <p className="hint small">
-        {activeSkills.length ? `SnagSkills on: ${activeSkills.join(", ")}` : "No SnagSkills on. Add community shopping tips in the SnagSkills tab."}
-      </p>
-
       <div className="chat" aria-live="polite">
-        {messages.length === 0 && <p className="hint">Try: "Find wireless earbuds under $80 that match my taste" or "What's left in my budget?"</p>}
+        {messages.length === 0 && (
+          <div>
+            <p className="hint">Ask in your own words, in any language. For example:</p>
+            <div className="suggestions">
+              {SUGGESTIONS.map((s) => (
+                <button key={s} type="button" onClick={() => void ask(s)} disabled={busy}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {messages.map((m, i) =>
           m.role === "user" ? (
             <p key={i} className="bubble user">
@@ -170,9 +194,13 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
               </p>
               {m.proposals.map((p) => (
                 <div key={p.wishId} className="proposal">
-                  <strong>
-                    {p.title} · {money(p.priceCents)}
-                  </strong>
+                  <div className="row spread">
+                    <strong>{p.title}</strong>
+                    <span className="row">
+                      <span className="money">{money(p.priceCents)}</span>
+                      <span className="deal">At your price</span>
+                    </span>
+                  </div>
                   {p.reason && <p className="hint">{p.reason}</p>}
                   {paid.has(p.wishId) ? (
                     <p>Paid in the PayPal sandbox.</p>
@@ -190,11 +218,11 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
                   )}
                 </div>
               ))}
-              <span className="hint small">{m.provider}</span>
+              <span className="hint small">AI answer · {m.provider}</span>
             </div>
           ),
         )}
-        {busy && <p className="hint">Thinking…</p>}
+        {busy && <p className="hint">Checking products, prices and your budget…</p>}
         <div ref={endRef} />
       </div>
 
@@ -226,7 +254,7 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
             <select name="provider" defaultValue={byok?.provider ?? "anthropic"}>
               {PROVIDERS.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.label} — {p.hint}
+                  {p.label} ({p.hint})
                 </option>
               ))}
             </select>

@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { formatCents, savingsCents, type Offer } from "@snagwise/core";
+import { formatMoney, savingsCents, type Offer } from "@snagwise/core";
 import { api } from "./api";
 
 // Story-sized (9:16) recommendation card. The QR opens a public page for the deal; scans and saves
 // from that page flow back into the sharer's taste profile.
 const W = 1080;
 const H = 1920;
-const money = (cents: number) => `$${formatCents(cents)}`;
+const money = formatMoney;
 
 function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {

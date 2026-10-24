@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { formatCents, savingsCents } from "@snagwise/core";
+import { formatMoney, savingsCents } from "@snagwise/core";
 import { api, type Share } from "./api";
 
-const money = (cents: number) => `$${formatCents(cents)}`;
+const money = formatMoney;
 
 // Public page behind the QR. Opening it and saving the deal both teach Snagwise.
 export function SharePage({ id }: { id: string }) {
@@ -43,7 +43,7 @@ export function SharePage({ id }: { id: string }) {
           <p className="hint">{[share.offer.brand, share.offer.domain].filter(Boolean).join(" · ")}</p>
           <p className="price">
             {money(share.offer.priceCents)}
-            {savingsCents(share.offer) > 0 && <span className="save"> save {money(savingsCents(share.offer))}</span>}
+            {savingsCents(share.offer) > 0 && <span className="deal">save {money(savingsCents(share.offer))}</span>}
           </p>
           <p className="hint">Price when shared, on {share.createdAt.slice(0, 10)}. It may have changed.</p>
           <div className="row">
