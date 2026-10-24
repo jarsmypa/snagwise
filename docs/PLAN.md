@@ -96,7 +96,7 @@ En sandbox, la orden la cobra **nuestra cuenta comercial de prueba**, como un se
 
 ## Requisitos de la entrega (checklist)
 
-- [ ] Repo público en GitHub con licencia MIT visible en el "About".
+- [ ] Repo público en GitHub con la licencia AGPL-3.0 visible en el "About" (GitHub la detecta sola desde el archivo LICENSE).
 - [x] README en inglés: qué hace, cómo correrlo, instrucciones para el jurado, herramientas de IA usadas y cómo.
 - [ ] Demo funcional: URL en Render (`render.yaml` listo).
 - [ ] Video de menos de 3 minutos en YouTube, público, mostrando la app funcionando.

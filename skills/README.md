@@ -6,7 +6,7 @@ Shopping know-how from the community. Each `.md` file in this folder is a skill 
 
 1. Copy the template from the app (SnagSkills → "Start from the template") or from another skill here.
 2. Fill in the header and the tips. Keep it practical: where good prices show up, what to check, red flags.
-3. Open a pull request adding your file to `skills/`. Reviewers check it before it reaches everyone.
+3. Open a pull request adding your file to `skills/`. Reviewers check it before it reaches everyone. By contributing you accept the terms in [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 You can also import a skill straight into your own app (SnagSkills → Import). Imported skills are marked **unverified** and only affect your session.
 

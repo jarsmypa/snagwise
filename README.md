@@ -78,4 +78,6 @@ Without a Channel3 key, Discover and search use a small **sample catalog for dev
 
 ## License
 
-[MIT](LICENSE)
+Copyright (C) 2026 The Snagwise authors.
+
+Snagwise is free software under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only): you can use, study, change and share it, and if you run a modified version as a service, you must share your changes with its users. Contributions are welcome under the terms in [CONTRIBUTING.md](CONTRIBUTING.md).
