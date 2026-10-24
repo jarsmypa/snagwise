@@ -75,9 +75,10 @@ En sandbox, la orden la cobra **nuestra cuenta comercial de prueba**, como un se
 - [ ] Pedir la clave de Channel3 y probar una búsqueda real.
 - [ ] Clave de Anthropic con límite de gasto.
 - [ ] Completar `apps/api/.env` (copiar de `.env.example`).
-- [ ] Botón de PayPal en la web (JS SDK) conectado a `/order` y `/capture`.
-- [ ] Seed de gastos demo.
-- [ ] Decidir el nombre final y crear el repo público en GitHub.
+- [x] Botón de PayPal en la web (JS SDK) conectado a `/order` y `/capture`. Falta probarlo con credenciales reales de sandbox.
+- [x] Seed de gastos demo (`npm run demo --workspace @snagwise/api`, o `SNAGWISE_SEED_DEMO=1` al arrancar).
+- [x] Nombre final: Snagwise.
+- [ ] Crear el repo público en GitHub.
 
 ## Requisitos de la entrega (checklist)
 

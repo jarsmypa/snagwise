@@ -30,11 +30,15 @@ Requires Node 24+.
 ```bash
 npm install
 cp .env.example apps/api/.env   # fill in SANDBOX credentials only
+npm run build --workspace @snagwise/api
+npm run demo --workspace @snagwise/api   # optional: sample budget, expenses and wishlist
 npm run dev:api                 # http://localhost:8080
 npm run dev:web                 # http://localhost:5190
 ```
 
 Checks: `npm run check` (typecheck, tests, build).
+
+To try checkout, log in to the PayPal popup with a **sandbox personal (buyer) account** from the PayPal Developer Dashboard. On a hosted demo, set `SNAGWISE_SEED_DEMO=1` so the sample data is recreated on every boot.
 
 ## License
 

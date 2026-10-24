@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApp, type Env } from "./app.js";
 import { openDb } from "./db.js";
+import { seedDemo } from "./seed.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 // Paths are relative to apps/api/dist, where this file ends up bundled.
@@ -23,6 +24,8 @@ if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET) {
 }
 
 const db = openDb(DB_PATH);
+// Render's free disk is wiped on every deploy, so the hosted demo re-seeds itself on boot.
+if (process.env.SNAGWISE_SEED_DEMO === "1") seedDemo(db);
 const app = createApp({ db, env });
 
 // One server for API and web app: a single Render service to deploy.

@@ -1,7 +1,11 @@
 :root {
   --bg: #fafaf7;
+  --surface: #ffffff;
   --text: #1c1c1a;
   --muted: #5d5d57;
+  --line: #e2e1da;
+  --accent: #1f6f4a;
+  --on-accent: #ffffff;
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
 }
@@ -9,8 +13,12 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #161614;
+    --surface: #1f1f1c;
     --text: #ededea;
     --muted: #a3a39c;
+    --line: #34342f;
+    --accent: #5cc08f;
+    --on-accent: #0d2a1c;
   }
 }
 
@@ -18,15 +26,165 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  line-height: 1.5;
 }
 
 main {
-  max-width: 40rem;
+  max-width: 44rem;
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: 2rem 1rem 4rem;
+}
+
+section {
+  margin-top: 2.5rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem;
 }
 
 .lede,
-.status {
+.hint {
   color: var(--muted);
+}
+
+.hint {
+  font-size: 0.9rem;
+}
+
+.big {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.bar {
+  height: 0.5rem;
+  background: var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 0.5rem 0 1rem;
+}
+
+.bar > div {
+  height: 100%;
+  background: var(--accent);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.spread {
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.grow {
+  flex: 1 1 14rem;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input {
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 0;
+}
+
+button {
+  font: inherit;
+  padding: 0.5rem 0.9rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+button.quiet {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.cards {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.card p {
+  margin: 0.5rem 0;
+}
+
+.paypal {
+  margin-top: 0.75rem;
+  max-width: 22rem;
+}
+
+.categories {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.5rem;
+}
+
+.categories li {
+  display: flex;
+  justify-content: space-between;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.4rem 0.3rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+[role="alert"] {
+  color: #b3261e;
 }

@@ -67,6 +67,8 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
   app.get("/api/health", (c) =>
     c.json({ ok: true, channel3: Boolean(env.channel3Key), paypal: Boolean(env.paypal) }),
   );
+  // The PayPal client id is public by design (the JS SDK needs it in the browser); the secret never leaves the server.
+  app.get("/api/config", (c) => c.json({ paypalClientId: env.paypal?.clientId ?? null, currency: CURRENCY }));
 
   // Budget and spending
   app.get("/api/budget", (c) => c.json(budgetSummary()));
