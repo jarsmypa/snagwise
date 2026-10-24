@@ -364,3 +364,103 @@ a.button.quiet {
   background: #fff;
   border-radius: 8px;
 }
+
+.chat {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1rem 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.bubble {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  max-width: 85%;
+  overflow-wrap: anywhere;
+}
+
+.bubble p {
+  margin: 0.25rem 0;
+}
+
+.bubble.user {
+  justify-self: end;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.bubble.assistant {
+  justify-self: start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.handoff {
+  font-size: 0.8rem;
+  color: var(--muted);
+  border-left: 3px solid var(--accent);
+  padding-left: 0.5rem;
+}
+
+.proposal {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.6rem;
+  margin: 0.5rem 0;
+}
+
+.small {
+  font-size: 0.75rem;
+}
+
+.context pre {
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem;
+  max-height: 24rem;
+  overflow: auto;
+}
+
+details {
+  margin-top: 1rem;
+}
+
+summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.stack {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 26rem;
+}
+
+select {
+  font: inherit;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+label.check {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}

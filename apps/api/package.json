@@ -10,8 +10,9 @@
     "demo": "node dist/seed-demo.mjs"
   },
   "dependencies": {
-    "@snagwise/core": "*",
+    "@anthropic-ai/sdk": "1.1.0",
     "@hono/node-server": "2.1.5",
+    "@snagwise/core": "*",
     "hono": "4.13.13",
     "zod": "4.6.7"
   }

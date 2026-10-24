@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { createApp, type Env } from "./app.js";
 import { openDb } from "./db.js";
 import { seedDemo } from "./seed.js";
+import { compatibleProvider, PRESETS } from "./agent/openai-compatible.js";
+import type { Provider } from "./agent/types.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 // Paths are relative to apps/api/dist, where this file ends up bundled.
@@ -23,6 +25,22 @@ if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET) {
   };
 }
 
+if (process.env.SNAGWISE_ACCESS_CODE) env.accessCode = process.env.SNAGWISE_ACCESS_CODE;
+
+// Free-tier AI providers, tried in this order. Each one is used only if its key is set.
+// One account per provider: multiplying accounts to stretch a free tier breaks their terms.
+const free: Provider[] = [];
+for (const id of ["gemini", "groq", "openrouter"] as const) {
+  const key = process.env[`${id.toUpperCase()}_API_KEY`];
+  const model = process.env[`${id.toUpperCase()}_MODEL`] || PRESETS[id].model;
+  if (key && model) free.push(compatibleProvider({ id, name: PRESETS[id].name, baseUrl: PRESETS[id].baseUrl, apiKey: key, model }));
+}
+env.freeProviders = free;
+env.agentLimits = {
+  perIpPerHour: Number(process.env.SNAGWISE_AGENT_PER_IP_HOUR ?? 30),
+  freeRequestsPerDay: Number(process.env.SNAGWISE_AGENT_PER_DAY ?? 300),
+};
+
 const db = openDb(DB_PATH);
 // Render's free disk is wiped on every deploy, so the hosted demo re-seeds itself on boot.
 if (process.env.SNAGWISE_SEED_DEMO === "1") seedDemo(db);
@@ -37,6 +55,7 @@ if (existsSync(WEB_DIR)) {
 
 serve({ fetch: app.fetch, port: PORT, hostname: process.env.HOST ?? "0.0.0.0" }, (info) => {
   console.log(`Snagwise listening on port ${info.port} (db: ${DB_PATH})`);
+  console.log(`Free AI providers: ${free.map((p) => p.label).join(", ") || "none (users can still connect their own key)"}`);
 });
 
 const shutdown = () => {

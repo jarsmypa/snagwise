@@ -5,11 +5,21 @@ import { nowIso, type DB } from "./db.js";
 import { searchProducts } from "./channel3.js";
 import { captureOrder, createOrder, type PayPalConfig } from "./paypal.js";
 import { registerDiscover } from "./discover.js";
+import { accessCode } from "./guard.js";
+import { registerAgent, type AgentLimits, type Byok } from "./agent/routes.js";
+import { Rotation } from "./agent/rotation.js";
+import type { Provider } from "./agent/types.js";
 
 export interface Env {
   channel3Key?: string;
   paypal?: PayPalConfig;
+  accessCode?: string;
+  freeProviders?: Provider[]; // free-tier AI providers, in the order to try them
+  agentLimits?: AgentLimits;
+  makeByok?: (b: Byok) => Provider; // tests swap in a fake
 }
+
+const DEFAULT_LIMITS: AgentLimits = { perIpPerHour: 30, freeRequestsPerDay: 300 };
 
 const CURRENCY = "USD";
 
@@ -51,6 +61,7 @@ const toWish = (r: WishRow) => ({
 
 export function createApp({ db, env }: { db: DB; env: Env }) {
   const app = new Hono();
+  app.use("*", accessCode(env.accessCode));
 
   const budgetCents = () => {
     const row = db.prepare("SELECT value FROM settings WHERE key = 'budget_cents'").get() as { value: string } | undefined;
@@ -91,8 +102,7 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
   // Wishlist ("wallet" of saved deals)
   app.get("/api/wishlist", (c) =>
     c.json((db.prepare("SELECT * FROM wishlist ORDER BY created_at DESC").all() as unknown as WishRow[]).map(toWish)),
-  );
-  app.post("/api/wishlist", async (c) => {
+  );  app.post("/api/wishlist", async (c) => {
     const body = z
       .object({ query: z.string().trim().min(2).max(200), targetCents: z.number().int().positive() })
       .parse(await c.req.json());
@@ -155,9 +165,35 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     return c.json({ status: result.status, budget: budgetSummary() });
   });
 
-  registerDiscover(app, db, env.channel3Key);
+  const discover = registerDiscover(app, db, env.channel3Key);
 
-  // TODO(week 1): POST /api/agent — Claude tool-use loop over search, wishlist, budget and order proposals.
+  const wallet = () => (db.prepare("SELECT * FROM wishlist ORDER BY created_at DESC").all() as unknown as WishRow[]).map(toWish);
+  const spending = () => {
+    const month = monthOf(nowIso());
+    const totals = new Map<string, number>();
+    for (const t of transactions()) if (monthOf(t.date) === month) totals.set(t.category, (totals.get(t.category) ?? 0) + t.amountCents);
+    return [...totals].map(([category, cents]) => ({ category, cents })).sort((a, b) => b.cents - a.cents);
+  };
+  registerAgent(app, db, {
+    deps: {
+      profile: discover.profile,
+      budget: budgetSummary,
+      spending,
+      wallet,
+      search: discover.search,
+      addToWallet: (offer, targetCents) => {
+        const id = crypto.randomUUID();
+        db.prepare(
+          "INSERT INTO wishlist (id, query, target_cents, currency, best_offer, last_checked_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ).run(id, offer.title, targetCents, offer.currency, JSON.stringify(offer), nowIso(), nowIso());
+        return id;
+      },
+    },
+    freeProviders: env.freeProviders ?? [],
+    rotation: new Rotation(),
+    limits: env.agentLimits ?? DEFAULT_LIMITS,
+    ...(env.makeByok ? { makeByok: env.makeByok } : {}),
+  });
 
   app.onError((err, c) => {
     if (err instanceof z.ZodError) return c.json({ error: "Invalid request", issues: err.issues }, 400);

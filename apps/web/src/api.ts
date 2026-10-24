@@ -40,10 +40,67 @@ export interface Wish {
   lastCheckedAt: string | null;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, init);
-  const body = res.status === 204 ? null : await res.json();
-  if (!res.ok) throw new Error((body as { error?: string } | null)?.error ?? `Request failed (${res.status})`);
+export interface Byok {
+  provider: "anthropic" | "gemini" | "groq" | "openrouter";
+  apiKey: string;
+  model?: string;
+}
+
+export interface AgentReply {
+  conversationId: string;
+  reply: string;
+  provider: string;
+  handoffs: { from: string; to: string; reason: string }[];
+  proposals: { wishId: string; title: string; priceCents: number; reason: string }[];
+  walletChanged: boolean;
+}
+
+// Errors keep the server's machine-readable code (access_code, busy, daily_limit…) for the UI.
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+
+// Browser storage can be missing or blocked (private windows); the app works without it.
+export const storage = {
+  get(key: string): string | null {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set(key: string, value: string | null) {
+    try {
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    } catch {
+      // ignore
+    }
+  },
+};
+
+let accessCode = storage.get("snagwise.access") ?? "";
+export function setAccessCode(code: string) {
+  accessCode = code;
+  storage.set("snagwise.access", code || null);
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (accessCode) headers.set("x-access-code", accessCode);
+  const res = await fetch(path, { ...init, headers });
+  const isJson = res.headers.get("content-type")?.includes("application/json");
+  const body = res.status === 204 ? null : isJson ? await res.json() : await res.text();
+  if (!res.ok) {
+    const err = body as { error?: string; code?: string } | null;
+    throw new ApiError(err?.error ?? `Request failed (${res.status})`, res.status, err?.code);
+  }
   return body as T;
 }
 
@@ -71,4 +128,8 @@ export const api = {
   share: (id: string) => request<Share>(`/api/shares/${id}`),
   openShare: (id: string) => request<null>(`/api/shares/${id}/open`, send("POST")),
   saveShare: (id: string) => request<{ saved: boolean }>(`/api/shares/${id}/save`, send("POST")),
+  ask: (message: string, conversationId: string | null, byok: Byok | null) =>
+    request<AgentReply>("/api/agent", send("POST", { message, ...(conversationId ? { conversationId } : {}), ...(byok ? { byok } : {}) })),
+  contextMd: (conversationId: string) => request<string>(`/api/agent/${conversationId}/context.md`),
+  freeProviders: () => request<string[]>("/api/agent/providers"),
 };

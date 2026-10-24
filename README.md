@@ -16,12 +16,20 @@ Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/). Eve
 
 In this demo the sandbox order is collected by the app's own merchant test account (a "buy it for me" concierge). In production, the purchase would go through the store's own PayPal checkout.
 
+## The agent runs on free AI, and on yours
+
+- **Free providers, rotating.** The server can use the free tiers of Gemini, Groq and OpenRouter. When one hits its limit (HTTP 429), Snagwise cools it down and the next one answers.
+- **A shared context file.** Every request starts from a Markdown file built from app state: taste profile, budget, wallet, actions already taken and the recent conversation. When a model hands off mid-conversation, or even mid-answer, the next one reads the same file and knows what was already done. You can open the file from the chat.
+- **Bring your own key.** Users can connect their own Claude, Gemini, Groq or OpenRouter key. It is sent only with their messages and is never stored or logged on the server.
+- **Nothing pays by itself.** The agent can search, save to the wallet and *propose* a purchase; the user approves it in the PayPal checkout.
+
 ## Stack
 
 - `apps/web` — React + Vite
 - `apps/api` — Hono + SQLite (`node:sqlite`), also serves the web app
 - `packages/core` — pure budget and purchase rules, with tests
-- PayPal Orders v2 (sandbox), Channel3 product search, Claude (Anthropic) for the agent
+- PayPal Orders v2 (sandbox), Channel3 product search
+- AI: free-tier Gemini / Groq / OpenRouter via their OpenAI-compatible APIs (plain `fetch`), and Claude through the official Anthropic SDK when the user brings a key
 
 ## Run locally
 

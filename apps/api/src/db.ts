@@ -52,6 +52,16 @@ const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE agent_conversations (
+    id TEXT PRIMARY KEY,
+    recent TEXT NOT NULL,
+    notes TEXT NOT NULL,
+    seen TEXT NOT NULL,
+    context_md TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  `,
 ];
 
 export function openDb(path: string): DB {

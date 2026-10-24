@@ -51,13 +51,15 @@ Flujo de compra (el corazón de la demo):
 
 En sandbox, la orden la cobra **nuestra cuenta comercial de prueba**, como un servicio de "compra por mí" (concierge). Una tienda real de Channel3 no cobra a través de nuestra orden. Para el jurado lo decimos claro en el README y en el video: *"en producción, la compra se hace en el checkout de PayPal de la tienda, o mediante los protocolos de comercio con agentes de PayPal"*. Ser transparentes en esto evita que el jurado lo marque como trampa.
 
-### El agente
+### El agente (gasto cero)
 
-- Modelo: Claude por la API de Anthropic, con un bucle de herramientas (tool use).
-- Herramientas: `search_products`, `add_to_wallet`, `get_budget`, `list_spending`, `check_price`, `propose_purchase`.
+- **IA gratuita que rota:** Gemini → Groq → OpenRouter, usando sus planes gratuitos (un adaptador común, sin dependencias nuevas). Cuando uno da 429 (límite), queda en pausa —1 min, y se duplica si se repite, hasta 6 h— y responde el siguiente.
+- **Archivo de contexto `.md`:** cada pedido arranca desde un Markdown armado con el estado de la app (gustos, presupuesto, cartera, acciones ya hechas y últimos mensajes). Si un modelo se corta, incluso a mitad de respuesta, el siguiente lee el mismo archivo y no repite lo hecho. Armarlo no consume IA. Se puede ver desde el chat (buen momento para el video).
+- **Trae tu clave:** cada usuario puede conectar su clave de Claude, Gemini, Groq u OpenRouter. Va solo con sus mensajes; el servidor no la guarda ni la registra.
+- Herramientas: `get_taste_profile`, `get_budget`, `list_wallet`, `search_products`, `add_to_wallet`, `propose_purchase`.
 - `propose_purchase` **no paga**: devuelve una propuesta que la web convierte en botón de PayPal.
-- Antes de escribir el agente, revisar la documentación actual del SDK (`@anthropic-ai/sdk`) y del modelo a usar.
-- Clave de Anthropic con **límite de gasto mensual**, y solo en el servidor.
+- **Protecciones:** código de acceso opcional, límite por visitante por hora y tope diario total para los proveedores gratuitos.
+- Una cuenta por proveedor: crear varias para estirar el plan gratuito viola sus términos.
 
 ### Gastos del mes
 

@@ -57,6 +57,12 @@ const toReaction = (r: ReactionRow): Reaction => {
 
 const shortId = () => crypto.randomUUID().replace(/-/g, "").slice(0, 10);
 
+// Without a Channel3 key, a word match over the dev-only sample catalog.
+function searchSample(query: string): Offer[] {
+  const words = query.toLowerCase().split(/\W+/).filter((w) => w.length > 2);
+  return SAMPLE_CATALOG.filter((o) => words.some((w) => `${o.title} ${o.category ?? ""}`.toLowerCase().includes(w)));
+}
+
 export function registerDiscover(app: Hono, db: DB, channel3Key: string | undefined) {
   const reactions = () => (db.prepare("SELECT * FROM reactions").all() as unknown as ReactionRow[]).map(toReaction);
   const shareStats = (): ShareStat[] =>
@@ -157,4 +163,9 @@ export function registerDiscover(app: Hono, db: DB, channel3Key: string | undefi
     if (bytes.byteLength > MAX_IMAGE_BYTES) return c.json({ error: "Image too large" }, 502);
     return c.body(bytes, 200, { "content-type": type, "cache-control": "public, max-age=86400" });
   });
+
+  return {
+    profile,
+    search: (query: string) => (channel3Key ? searchProducts(channel3Key, query, 10) : Promise.resolve(searchSample(query))),
+  };
 }

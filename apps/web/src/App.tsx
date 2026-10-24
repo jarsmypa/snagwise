@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { formatCents, monthOf, savingsCents, toCents, type Transaction, type Verdict } from "@snagwise/core";
-import { api, type Budget, type Config, type Health, type Wish } from "./api";
+import { api, ApiError, setAccessCode, type Budget, type Config, type Health, type Wish } from "./api";
 import { PayPalButton } from "./PayPalButton";
 import { Discover } from "./Discover";
+import { Assistant } from "./Assistant";
 
-type Tab = "discover" | "wallet" | "spending";
+type Tab = "assistant" | "discover" | "wallet" | "spending";
 const TABS: { id: Tab; label: string }[] = [
+  { id: "assistant", label: "Assistant" },
   { id: "discover", label: "Discover" },
   { id: "wallet", label: "Wallet" },
   { id: "spending", label: "Spending" },
@@ -29,7 +31,8 @@ export function App() {
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [verdicts, setVerdicts] = useState<Record<string, Verdict | null>>({});
   const [busy, setBusy] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("discover");
+  const [tab, setTab] = useState<Tab>("assistant");
+  const [needAccess, setNeedAccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -41,10 +44,18 @@ export function App() {
       setTxs(t);
       setWishes(w);
       setError(null);
-    } catch {
-      setError("The API is not running. Start it with npm run dev:api.");
+      setNeedAccess(false);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "access_code") setNeedAccess(true);
+      else setError("The API is not running. Start it with npm run dev:api.");
     }
   }, []);
+
+  const submitAccess = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setAccessCode(String(new FormData(e.currentTarget).get("code") ?? "").trim());
+    void refresh();
+  };
 
   useEffect(() => {
     void refresh();
@@ -93,6 +104,22 @@ export function App() {
   ).sort((a, b) => b[1] - a[1]);
   const purchases = txs.filter((t) => t.category === "wishlist").length;
 
+  if (needAccess) {
+    return (
+      <main>
+        <h1>Snagwise</h1>
+        <p className="lede">This demo is private. Enter the access code from the submission's testing instructions.</p>
+        <form onSubmit={submitAccess} className="row">
+          <label className="grow">
+            Access code
+            <input name="code" type="password" required autoComplete="off" />
+          </label>
+          <button>Enter</button>
+        </form>
+      </main>
+    );
+  }
+
   return (
     <main>
       <header>
@@ -114,6 +141,7 @@ export function App() {
 
       {error && <p role="alert">{error}</p>}
 
+      {tab === "assistant" && <Assistant config={config} onWalletChange={() => void refresh()} onAccessNeeded={() => setNeedAccess(true)} />}
       {tab === "discover" && <Discover onWalletChange={() => void refresh()} />}
 
       {tab === "wallet" && budget && (
