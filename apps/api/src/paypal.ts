@@ -60,6 +60,35 @@ export async function createOrder(
   });
 }
 
-export async function captureOrder(cfg: PayPalConfig, orderId: string): Promise<{ id: string; status: string }> {
+export interface CapturedOrder {
+  id: string;
+  status: string;
+  purchase_units?: { payments?: { captures?: { id: string; status: string }[] } }[];
+}
+
+export async function captureOrder(cfg: PayPalConfig, orderId: string): Promise<CapturedOrder> {
   return call(cfg, `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {});
+}
+
+export const captureIdOf = (order: CapturedOrder): string | null => order.purchase_units?.[0]?.payments?.captures?.[0]?.id ?? null;
+
+// Full refund of a captured payment (the 24-hour "changed my mind" window).
+export async function refundCapture(cfg: PayPalConfig, captureId: string): Promise<{ id: string; status: string }> {
+  return call(cfg, `/v2/payments/captures/${encodeURIComponent(captureId)}/refund`, {});
+}
+
+export const isSandbox = (cfg: PayPalConfig) => cfg.baseUrl.includes("sandbox");
+
+// One payout (sidequest reward). Callers must only use this against the sandbox.
+export async function sendPayout(
+  cfg: PayPalConfig,
+  receiverEmail: string,
+  amountCents: number,
+  note: string,
+  batchId: string,
+): Promise<{ batch_header: { payout_batch_id: string; batch_status: string } }> {
+  return call(cfg, "/v1/payments/payouts", {
+    sender_batch_header: { sender_batch_id: batchId, email_subject: "Your Snagwise sidequest reward" },
+    items: [{ recipient_type: "EMAIL", receiver: receiverEmail, amount: { value: formatCents(amountCents), currency: "USD" }, note }],
+  });
 }

@@ -1,13 +1,15 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { evaluateOffer, monthOf, remainingBudget, savingsCents, trackOffer, type Offer, type Skill, type Transaction } from "@snagwise/core";
+import { budgetCost, evaluateOffer, landedCost, monthOf, remainingBudget, savingsCents, trackOffer, type Offer, type Skill, type Transaction } from "@snagwise/core";
 import { registerSkills } from "./skills.js";
 import { recordPrice, registerAlerts, unreadAlerts } from "./watch.js";
 import { registerPlay } from "./play.js";
 import { registerMe } from "./me.js";
+import { registerRewards } from "./rewards.js";
 import { logEvent, nowIso, type DB } from "./db.js";
 import { searchProducts } from "./channel3.js";
-import { captureOrder, createOrder, type PayPalConfig } from "./paypal.js";
+import { captureIdOf, captureOrder, createOrder, refundCapture, type PayPalConfig } from "./paypal.js";
+import { getCourier, registerCourier } from "./courier.js";
 import { offerSchema, registerDiscover } from "./discover.js";
 import { accessCode } from "./guard.js";
 import { registerAgent, type AgentLimits, type Byok } from "./agent/routes.js";
@@ -75,7 +77,7 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     const row = db.prepare("SELECT value FROM settings WHERE key = 'budget_cents'").get() as { value: string } | undefined;
     return row ? Number(row.value) : 0;
   };
-  const transactions = () => (db.prepare("SELECT * FROM transactions ORDER BY date DESC").all() as unknown as TxRow[]).map(toTx);
+  const transactions = () => (db.prepare("SELECT * FROM transactions WHERE refunded_at IS NULL ORDER BY date DESC").all() as unknown as TxRow[]).map(toTx);
   const budgetSummary = () => {
     const month = monthOf(nowIso());
     const total = budgetCents();
@@ -146,7 +148,7 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     if (offer) recordPrice(db, row, offer);
     else db.prepare("UPDATE wishlist SET last_checked_at = ? WHERE id = ?").run(nowIso(), row.id);
     const wish = toWish(getWish(row.id)!);
-    const verdict = offer ? evaluateOffer(wish, offer, budgetSummary().remainingCents) : null;
+    const verdict = offer ? evaluateOffer(wish, offer, budgetSummary().remainingCents, budgetCost(offer, getCourier(db))) : null;
     return c.json({ wish, verdict });
   });
 
@@ -157,7 +159,7 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     if (!row) return c.json({ error: "Not found" }, 404);
     const wish = toWish(row);
     if (!wish.bestOffer) return c.json({ error: "Check the price first" }, 409);
-    const verdict = evaluateOffer(wish, wish.bestOffer, budgetSummary().remainingCents);
+    const verdict = evaluateOffer(wish, wish.bestOffer, budgetSummary().remainingCents, budgetCost(wish.bestOffer, getCourier(db)));
     if (!verdict.buy) return c.json({ error: "Rules say not to buy", verdict }, 409);
     const order = await createOrder(env.paypal, wish.bestOffer.priceCents, wish.currency, wish.bestOffer.title);
     return c.json({ orderId: order.id });
@@ -171,8 +173,16 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     const result = await captureOrder(env.paypal, c.req.param("orderId"));
     if (result.status === "COMPLETED") {
       db.prepare(
-        "INSERT INTO transactions (id, date, amount_cents, currency, merchant, category, source, saved_cents) VALUES (?, ?, ?, ?, ?, ?, 'paypal', ?)",
-      ).run(result.id, nowIso(), offer.priceCents, offer.currency, offer.domain, purchaseCategory(offer), savingsCents(offer));
+        "INSERT INTO transactions (id, date, amount_cents, currency, merchant, category, source, saved_cents, capture_id) VALUES (?, ?, ?, ?, ?, ?, 'paypal', ?, ?)",
+      ).run(result.id, nowIso(), offer.priceCents, offer.currency, offer.domain, purchaseCategory(offer), savingsCents(offer), captureIdOf(result));
+      // Through a courier, the rest of the landed cost is paid on pickup: count it now so the budget stays honest.
+      const courier = getCourier(db);
+      if (courier.enabled) {
+        const landed = landedCost(offer, courier);
+        db.prepare(
+          "INSERT INTO transactions (id, date, amount_cents, currency, merchant, category, source) VALUES (?, ?, ?, ?, 'courier (estimate)', 'courier & taxes', 'estimate')",
+        ).run(`${result.id}-courier`, nowIso(), landed.extraCents, offer.currency);
+      }
       db.prepare("DELETE FROM wishlist WHERE id = ?").run(wishId);
     }
     return c.json({ status: result.status, budget: budgetSummary() });
@@ -180,11 +190,52 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
 
   // What Snagwise purchases saved against the stores' list prices, all time.
   app.get("/api/savings", (c) => {
-    const row = db.prepare("SELECT COALESCE(SUM(saved_cents), 0) AS saved, COUNT(*) AS purchases FROM transactions WHERE source = 'paypal'").get() as {
+    const row = db.prepare("SELECT COALESCE(SUM(saved_cents), 0) AS saved, COUNT(*) AS purchases FROM transactions WHERE source = 'paypal' AND refunded_at IS NULL").get() as {
       saved: number;
       purchases: number;
     };
     return c.json({ savedCents: row.saved, purchases: row.purchases });
+  });
+
+  registerCourier(app, db);
+
+  // Purchases made through Snagwise, with the 24-hour window to change your mind.
+  const REFUND_WINDOW_MS = 24 * 60 * 60_000;
+  app.get("/api/purchases", (c) => {
+    const rows = db.prepare("SELECT id, date, amount_cents, merchant, category, capture_id, refunded_at FROM transactions WHERE source = 'paypal' ORDER BY date DESC LIMIT 20").all() as {
+      id: string;
+      date: string;
+      amount_cents: number;
+      merchant: string;
+      category: string;
+      capture_id: string | null;
+      refunded_at: string | null;
+    }[];
+    const now = Date.now();
+    return c.json(
+      rows.map((r) => ({
+        id: r.id,
+        date: r.date,
+        amountCents: r.amount_cents,
+        merchant: r.merchant,
+        category: r.category,
+        refundedAt: r.refunded_at,
+        refundableUntil: r.capture_id && !r.refunded_at && now - Date.parse(r.date) < REFUND_WINDOW_MS ? new Date(Date.parse(r.date) + REFUND_WINDOW_MS).toISOString() : null,
+      })),
+    );
+  });
+  app.post("/api/purchases/:id/refund", async (c) => {
+    if (!env.paypal) return c.json({ error: "PayPal sandbox credentials are not set" }, 503);
+    const row = db.prepare("SELECT date, capture_id, refunded_at FROM transactions WHERE id = ? AND source = 'paypal'").get(c.req.param("id")) as
+      | { date: string; capture_id: string | null; refunded_at: string | null }
+      | undefined;
+    if (!row) return c.json({ error: "Not found" }, 404);
+    if (row.refunded_at) return c.json({ error: "Already refunded" }, 409);
+    if (!row.capture_id || Date.now() - Date.parse(row.date) >= REFUND_WINDOW_MS) return c.json({ error: "The 24-hour window to undo this purchase has closed." }, 409);
+    const refund = await refundCapture(env.paypal, row.capture_id);
+    if (refund.status !== "COMPLETED" && refund.status !== "PENDING") return c.json({ error: `PayPal answered ${refund.status}` }, 502);
+    db.prepare("UPDATE transactions SET refunded_at = ? WHERE id = ? OR id = ?").run(nowIso(), c.req.param("id"), `${c.req.param("id")}-courier`);
+    return c.json({ status: refund.status, budget: budgetSummary() });
   });
 
   const skills = registerSkills(app, db, env.communitySkills ?? []);
@@ -198,6 +249,7 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     monthlyBudgetCents: () => budgetSummary().budgetCents,
   });
   registerMe(app, db, { profile: discover.profile, budget: budgetSummary });
+  registerRewards(app, db, { paypal: env.paypal, profile: discover.profile, budget: budgetSummary });
   const channel3 = env.channel3Key;
   registerAlerts(app, db, channel3 ? (q) => searchProducts(channel3, q, 10) : null);
 
@@ -217,6 +269,7 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
       search: discover.search,
       skills: skills.active,
       alerts: () => unreadAlerts(db),
+      courier: () => getCourier(db),
       addToWallet: (offer, targetCents) => {
         const id = crypto.randomUUID();
         db.prepare(

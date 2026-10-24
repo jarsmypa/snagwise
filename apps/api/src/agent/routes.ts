@@ -108,6 +108,7 @@ export function registerAgent(
         notes: session.notes,
         skills: opts.deps.skills(),
         alerts: opts.deps.alerts(),
+        courier: opts.deps.courier(),
         ...(handoff ? { handoff } : {}),
       });
 

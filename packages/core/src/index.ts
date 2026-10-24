@@ -30,6 +30,7 @@ export interface Offer {
   imageUrl?: string;
   category?: string;
   brand?: string;
+  weightGrams?: number; // shipping weight, when the store publishes it
 }
 
 export type Verdict =
@@ -56,10 +57,11 @@ export function remainingBudget(
 }
 
 // The agent only proposes a purchase when this says yes; the user still approves it.
-export function evaluateOffer(item: WishItem, offer: Offer, remainingCents: number): Verdict {
+// costCents: what the purchase really takes from the budget (e.g. landed in Asunción). Defaults to the price.
+export function evaluateOffer(item: WishItem, offer: Offer, remainingCents: number, costCents = offer.priceCents): Verdict {
   if (offer.currency !== item.currency) return { buy: false, reason: "currency_mismatch" };
   if (offer.priceCents > item.targetCents) return { buy: false, reason: "above_target" };
-  if (offer.priceCents > remainingCents) return { buy: false, reason: "over_budget" };
+  if (costCents > remainingCents) return { buy: false, reason: "over_budget" };
   return { buy: true, reason: "within_target_and_budget" };
 }
 
@@ -114,3 +116,4 @@ export * from "./taste.js";
 export * from "./skills.js";
 export * from "./play.js";
 export * from "./achievements.js";
+export * from "./landed.js";

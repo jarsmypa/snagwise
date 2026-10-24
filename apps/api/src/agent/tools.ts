@@ -1,4 +1,4 @@
-import { evaluateOffer, formatMoney, scoreOffer, skillScore, toCents, topCategories, type Offer, type Skill, type TasteProfile } from "@snagwise/core";
+import { budgetCost, evaluateOffer, formatMoney, landedCost, scoreOffer, skillScore, toCents, topCategories, type CourierSettings, type Offer, type Skill, type TasteProfile } from "@snagwise/core";
 import type { ToolCall, ToolSpec } from "./types.js";
 
 /*
@@ -16,6 +16,7 @@ export interface AgentDeps {
   addToWallet(offer: Offer, targetCents: number): string; // returns the new wallet item id
   skills(): { skill: Skill; origin: "community" | "imported" }[]; // active SnagSkills
   alerts(): { title: string; store: string; priceCents: number; targetCents: number }[]; // unread price alerts
+  courier(): CourierSettings | null; // set when the user buys through a Miami courier (Paraguay)
 }
 
 export interface Proposal {
@@ -102,7 +103,19 @@ export async function runTool(call: ToolCall, deps: AgentDeps, session: ToolSess
       const offers = (await deps.search(query)).sort((a, b) => rank(b) - rank(a)).slice(0, 8);
       for (const o of offers) session.seen.set(o.productId, o);
       if (offers.length === 0) return "No products found. Try a broader query.";
-      return JSON.stringify(offers.map((o) => ({ product_id: o.productId, title: o.title, brand: o.brand ?? null, category: o.category ?? null, price: money(o.priceCents), list_price: o.compareAtCents ? money(o.compareAtCents) : null, store: o.domain })));
+      const courier = deps.courier();
+      return JSON.stringify(
+        offers.map((o) => ({
+          product_id: o.productId,
+          title: o.title,
+          brand: o.brand ?? null,
+          category: o.category ?? null,
+          price: money(o.priceCents),
+          list_price: o.compareAtCents ? money(o.compareAtCents) : null,
+          store: o.domain,
+          ...(courier?.enabled ? { landed_in_asuncion: money(landedCost(o, courier).totalCents) } : {}),
+        })),
+      );
     }
     case "add_to_wallet": {
       const offer = session.seen.get(str(call.args.product_id));
@@ -120,7 +133,7 @@ export async function runTool(call: ToolCall, deps: AgentDeps, session: ToolSess
       const item = deps.wallet().find((w) => w.id === str(call.args.wallet_item_id));
       if (!item) return "Error: unknown wallet_item_id. Call list_wallet first.";
       if (!item.bestOffer) return "No price seen yet for this item. Search for it again first.";
-      const verdict = evaluateOffer(item, item.bestOffer, deps.budget().remainingCents);
+      const verdict = evaluateOffer(item, item.bestOffer, deps.budget().remainingCents, budgetCost(item.bestOffer, deps.courier()));
       if (!verdict.buy) {
         const why = { above_target: "the price is above the target", over_budget: "it would exceed this month's budget", currency_mismatch: "the offer is in another currency" }[verdict.reason];
         return `Not proposed: ${why}. Tell the user and keep watching.`;

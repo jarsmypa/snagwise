@@ -16,6 +16,7 @@ export interface ContextInput {
   notes: string[]; // actions the agent took (wallet adds, proposals), newest last
   skills: { skill: Skill; origin: "community" | "imported" }[];
   alerts: { title: string; store: string; priceCents: number; targetCents: number }[]; // unread price alerts
+  courier: { enabled: boolean } | null;
   handoff?: { from: string; to: string; reason: string };
 }
 
@@ -37,6 +38,10 @@ export function buildContextMd(c: ContextInput): string {
   if (disliked.length) lines.push(`- Not interested in: ${disliked.join(", ")}`);
   for (const [category, cents] of Object.entries(c.profile.priceCeilings)) lines.push(`- Comfortable paying up to ${money(cents)} for ${category}`);
   lines.push(`- Learned from ${c.profile.signals} signals (swipes, QR referrals, shared cards)`);
+
+  if (c.courier?.enabled) {
+    lines.push("", "## Shipping", "The user buys from US stores through a Miami courier to Asunción, Paraguay. Search results include landed_in_asuncion (price + Florida sales tax + courier + import tax): use it when talking about cost and budget.");
+  }
 
   lines.push(
     "",

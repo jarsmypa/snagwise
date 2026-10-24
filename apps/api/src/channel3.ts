@@ -19,7 +19,14 @@ interface C3Product {
   images?: { url?: string }[];
   brands?: { name: string }[];
   category?: { title: string } | null;
-  offers?: { url: string; domain: string; price: C3Price; availability?: string }[];
+  offers?: { url: string; domain: string; price: C3Price; availability?: string; dimensions?: { weight?: { number: number; unit: string } | null } | null }[];
+}
+
+// Shipping weight in grams, from whatever unit the store published.
+const GRAMS_PER: Record<string, number> = { mg: 0.001, g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+function weightGrams(w: { number: number; unit: string } | null | undefined): number | undefined {
+  const factor = w ? GRAMS_PER[w.unit.toLowerCase()] : undefined;
+  return w && factor && w.number > 0 ? Math.round(w.number * factor) : undefined;
 }
 
 export async function searchProducts(apiKey: string, query: string, limit = 10): Promise<Offer[]> {
@@ -50,6 +57,8 @@ export async function searchProducts(apiKey: string, query: string, limit = 10):
     if (p.category?.title) offer.category = p.category.title;
     const brand = p.brands?.[0]?.name;
     if (brand) offer.brand = brand;
+    const grams = weightGrams(cheapest.dimensions?.weight);
+    if (grams) offer.weightGrams = grams;
     offers.push(offer);
   }
   return offers;

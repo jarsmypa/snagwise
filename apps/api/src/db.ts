@@ -103,6 +103,18 @@ const MIGRATIONS: string[] = [
     unlocked_at TEXT NOT NULL
   );
   `,
+  `
+  ALTER TABLE transactions ADD COLUMN capture_id TEXT;
+  ALTER TABLE transactions ADD COLUMN refunded_at TEXT;
+  CREATE TABLE rewards (
+    quest_id TEXT PRIMARY KEY,
+    amount_cents INTEGER NOT NULL,
+    receiver TEXT NOT NULL,
+    batch_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  `,
 ];
 
 // Activity that no table keeps on its own (items ever added to the wallet, AI handoffs…), for achievements.

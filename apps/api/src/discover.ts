@@ -19,6 +19,7 @@ export const offerSchema = z.object({
   currency: z.string().length(3),
   compareAtCents: z.number().int().nonnegative().optional(),
   imageUrl: z.url().optional(),
+  weightGrams: z.number().positive().max(1_000_000).optional(),
   category: z.string().optional(),
   brand: z.string().optional(),
 });
