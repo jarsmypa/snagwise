@@ -26,6 +26,7 @@ if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET) {
     clientSecret: process.env.PAYPAL_CLIENT_SECRET,
     baseUrl: process.env.PAYPAL_BASE_URL ?? "https://api-m.sandbox.paypal.com",
   };
+  if (process.env.PAYPAL_PAYEE_EMAIL) env.paypal.payeeEmail = process.env.PAYPAL_PAYEE_EMAIL;
 }
 
 if (process.env.SNAGWISE_ACCESS_CODE) env.accessCode = process.env.SNAGWISE_ACCESS_CODE;

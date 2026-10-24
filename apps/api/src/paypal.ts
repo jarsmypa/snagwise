@@ -9,6 +9,9 @@ export interface PayPalConfig {
   clientId: string;
   clientSecret: string;
   baseUrl: string; // https://api-m.sandbox.paypal.com
+  // Collect into this sandbox business account instead of the app's own. Needed when the developer
+  // account's country can't receive payments (e.g. Paraguay): checkout then fails with PAYMENT_DENIED.
+  payeeEmail?: string;
 }
 
 let cached: { token: string; expiresAt: number } | undefined;
@@ -47,7 +50,13 @@ export async function createOrder(
 ): Promise<{ id: string; status: string }> {
   return call(cfg, "/v2/checkout/orders", {
     intent: "CAPTURE",
-    purchase_units: [{ amount: { currency_code: currency, value: formatCents(amountCents) }, description: description.slice(0, 127) }],
+    purchase_units: [
+      {
+        amount: { currency_code: currency, value: formatCents(amountCents) },
+        description: description.slice(0, 127),
+        ...(cfg.payeeEmail ? { payee: { email_address: cfg.payeeEmail } } : {}),
+      },
+    ],
   });
 }
 
