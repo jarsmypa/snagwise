@@ -1,0 +1,28 @@
+{
+  "name": "snagwise",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm --workspace @snagwise/api run dev",
+    "dev:web": "npm --workspace @snagwise/web run dev",
+    "build": "npm --workspace @snagwise/web run build && npm --workspace @snagwise/api run build",
+    "start": "npm --workspace @snagwise/api run start",
+    "test": "vitest run",
+    "typecheck": "tsc -p packages/core && tsc -p apps/api && tsc -p apps/web",
+    "check": "npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}

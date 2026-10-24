@@ -1,0 +1,56 @@
+import { formatCents } from "@snagwise/core";
+
+/*
+  PayPal Orders v2 against the SANDBOX. The web app shows the PayPal button for the order
+  this creates, so the human approves every payment; the server then captures it.
+*/
+
+export interface PayPalConfig {
+  clientId: string;
+  clientSecret: string;
+  baseUrl: string; // https://api-m.sandbox.paypal.com
+}
+
+let cached: { token: string; expiresAt: number } | undefined;
+
+async function accessToken(cfg: PayPalConfig): Promise<string> {
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
+  const res = await fetch(`${cfg.baseUrl}/v1/oauth2/token`, {
+    method: "POST",
+    headers: {
+      authorization: `Basic ${Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString("base64")}`,
+      "content-type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+  if (!res.ok) throw new Error(`PayPal auth failed: ${res.status}`);
+  const body = (await res.json()) as { access_token: string; expires_in: number };
+  cached = { token: body.access_token, expiresAt: Date.now() + body.expires_in * 1000 };
+  return body.access_token;
+}
+
+async function call<T>(cfg: PayPalConfig, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${cfg.baseUrl}${path}`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${await accessToken(cfg)}`, "content-type": "application/json" },
+    body: body === undefined ? null : JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`PayPal ${path} failed: ${res.status} ${await res.text()}`);
+  return (await res.json()) as T;
+}
+
+export async function createOrder(
+  cfg: PayPalConfig,
+  amountCents: number,
+  currency: string,
+  description: string,
+): Promise<{ id: string; status: string }> {
+  return call(cfg, "/v2/checkout/orders", {
+    intent: "CAPTURE",
+    purchase_units: [{ amount: { currency_code: currency, value: formatCents(amountCents) }, description: description.slice(0, 127) }],
+  });
+}
+
+export async function captureOrder(cfg: PayPalConfig, orderId: string): Promise<{ id: string; status: string }> {
+  return call(cfg, `/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {});
+}
