@@ -27,6 +27,29 @@ function progressLabel(id: string, progress: number, goal: number): string {
   return id.startsWith("saved_") ? `${formatMoney(progress)} / ${formatMoney(goal)}` : `${progress} / ${goal}`;
 }
 
+function AchievementList({ items }: { items: Me["achievements"] }) {
+  const { t } = useI18n();
+  return (
+    <ul className="achievements">
+      {items.map((a) => (
+        <li key={a.id} data-area={a.area} className={a.unlocked ? "" : "locked"}>
+          <Medal />
+          <strong>{t(achName(a.id))}</strong>
+          <span className="desc">{t(achDesc(a.id))}</span>
+          {!a.unlocked && (
+            <span>
+              <span className="small">{progressLabel(a.id, a.progress, a.goal)}</span>
+              <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={a.goal} aria-valuenow={a.progress}>
+                <div style={{ width: `${(a.progress / a.goal) * 100}%` }} />
+              </div>
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 // The shopper card: friendly title, tags and achievements, plus a one-time toast for each new unlock.
 export function ShopperCard({ refreshKey }: { refreshKey: string }) {
   const { t } = useI18n();
@@ -69,7 +92,8 @@ export function ShopperCard({ refreshKey }: { refreshKey: string }) {
   }, [open]);
 
   if (!me) return null;
-  const unlocked = me.achievements.filter((a) => a.unlocked).length;
+  const regular = me.achievements.filter((a) => a.kind === "achievement");
+  const unlocked = regular.filter((a) => a.unlocked).length;
   const allTags = [...me.styles.map((s) => t(titleKey(s))), ...me.tags];
 
   return (
@@ -100,27 +124,15 @@ export function ShopperCard({ refreshKey }: { refreshKey: string }) {
               )}
             </div>
 
+            <h3>{t("me.quests")}</h3>
+            <p className="hint small">{t("me.questsHint")}</p>
+            <AchievementList items={me.achievements.filter((a) => a.kind === "quest")} />
+
             <div className="row spread">
               <h3>{t("me.achievements")}</h3>
-              <span className="hint">{t("me.count", { n: unlocked, total: me.achievements.length })}</span>
+              <span className="hint">{t("me.count", { n: unlocked, total: regular.length })}</span>
             </div>
-            <ul className="achievements">
-              {me.achievements.map((a) => (
-                <li key={a.id} data-area={a.area} className={a.unlocked ? "" : "locked"}>
-                  <Medal />
-                  <strong>{t(achName(a.id))}</strong>
-                  <span className="desc">{t(achDesc(a.id))}</span>
-                  {!a.unlocked && (
-                    <span>
-                      <span className="small">{progressLabel(a.id, a.progress, a.goal)}</span>
-                      <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={a.goal} aria-valuenow={a.progress}>
-                        <div style={{ width: `${(a.progress / a.goal) * 100}%` }} />
-                      </div>
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <AchievementList items={regular} />
             <p className="hint small">{t("me.privacy")}</p>
             <button className="link" onClick={() => setOpen(false)}>
               {t("common.close")}

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
-import { formatMoney, monthOf, savingsCents, toCents, type Transaction, type Verdict } from "@snagwise/core";
+import { formatMoney, monthOf, savingsCents, toCents, type Offer, type Transaction, type Verdict } from "@snagwise/core";
 import { api, ApiError, setAccessCode, type Budget, type Config, type Health, type Wish } from "./api";
 import { PayPalButton } from "./PayPalButton";
 import { Discover } from "./Discover";
@@ -8,6 +8,7 @@ import { SnagSkills } from "./SnagSkills";
 import { Logo } from "./Logo";
 import { Alerts } from "./Alerts";
 import { ShopperCard } from "./ShopperCard";
+import { ShareCard } from "./ShareCard";
 import { LangSwitch, useI18n, type Key } from "./i18n";
 // AG Grid is the heaviest dependency: load it only when the Spending tab opens.
 const SpendingGrid = lazy(() => import("./SpendingGrid").then((m) => ({ default: m.SpendingGrid })));
@@ -45,6 +46,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [alertsKey, setAlertsKey] = useState(0);
   const [checkNote, setCheckNote] = useState<string | null>(null);
+  const [sharing, setSharing] = useState<Offer | null>(null);
 
   // "2026-10" → "October" / "octubre"
   const monthName = (ym: string) => new Date(`${ym}-15T12:00:00Z`).toLocaleDateString(locale, { month: "long", timeZone: "UTC" });
@@ -263,6 +265,11 @@ export function App() {
                       >
                         {t("common.remove")}
                       </button>
+                      {offer && (
+                        <button className="quiet" onClick={() => setSharing(offer)}>
+                          {t("swipe.recommend")}
+                        </button>
+                      )}
                     </div>
                     {verdict?.buy && config && <PayPalButton config={config} wishId={w.id} onPaid={() => void refresh()} />}
                   </li>
@@ -323,6 +330,7 @@ export function App() {
             })}
           </footer>
         )}
+        {sharing && <ShareCard offer={sharing} onClose={() => setSharing(null)} />}
       </main>
     </>
   );

@@ -24,6 +24,7 @@ export interface ShopperStats {
   shares: number; // recommendation cards created
   shareOpens: number;
   shareSaves: number; // friends who saved a recommended deal
+  shareSavesByGroup: Record<CategoryGroup, number>; // the same, by kind of product
   skillsActive: number;
   skillsImported: number;
   budgetUsedShare: number; // spent ÷ budget this month (0..1+)
@@ -32,34 +33,58 @@ export interface ShopperStats {
 export interface AchievementDef {
   id: string;
   area: Area;
+  kind: "achievement" | "quest"; // quests: sidequests won by recommending deals to other people
   goal: number;
   value: (s: ShopperStats) => number;
 }
 
 export const ACHIEVEMENTS: AchievementDef[] = [
-  { id: "first_chat", area: "assistant", goal: 1, value: (s) => s.chats },
-  { id: "relay", area: "assistant", goal: 1, value: (s) => s.handoffs },
-  { id: "first_swipe", area: "discover", goal: 1, value: (s) => s.swipes },
-  { id: "taste_teacher", area: "discover", goal: 25, value: (s) => s.signals },
-  { id: "price_spotter", area: "discover", goal: 5, value: (s) => s.priceLikes },
-  { id: "explorer", area: "discover", goal: 4, value: (s) => s.likedCategories },
-  { id: "window_shopper", area: "discover", goal: 1, value: (s) => s.playRuns },
-  { id: "daydreamer", area: "discover", goal: 3, value: (s) => s.playRuns },
-  { id: "dream_to_plan", area: "wallet", goal: 1, value: (s) => s.wantForReal },
-  { id: "first_share", area: "discover", goal: 1, value: (s) => s.shares },
-  { id: "word_of_mouth", area: "discover", goal: 1, value: (s) => s.shareSaves },
-  { id: "first_watch", area: "wallet", goal: 1, value: (s) => s.walletAdds },
-  { id: "wish_collector", area: "wallet", goal: 5, value: (s) => s.walletAdds },
-  { id: "right_on_time", area: "wallet", goal: 1, value: (s) => s.alerts },
-  { id: "first_purchase", area: "spending", goal: 1, value: (s) => s.purchases },
-  { id: "saved_25", area: "spending", goal: 2500, value: (s) => s.savedCents },
-  { id: "saved_100", area: "spending", goal: 10000, value: (s) => s.savedCents },
-  { id: "learning_from_pros", area: "skills", goal: 1, value: (s) => s.skillsActive },
+  { id: "first_chat", area: "assistant", kind: "achievement", goal: 1, value: (s) => s.chats },
+  { id: "relay", area: "assistant", kind: "achievement", goal: 1, value: (s) => s.handoffs },
+  { id: "first_swipe", area: "discover", kind: "achievement", goal: 1, value: (s) => s.swipes },
+  { id: "taste_teacher", area: "discover", kind: "achievement", goal: 25, value: (s) => s.signals },
+  { id: "price_spotter", area: "discover", kind: "achievement", goal: 5, value: (s) => s.priceLikes },
+  { id: "explorer", area: "discover", kind: "achievement", goal: 4, value: (s) => s.likedCategories },
+  { id: "window_shopper", area: "discover", kind: "achievement", goal: 1, value: (s) => s.playRuns },
+  { id: "daydreamer", area: "discover", kind: "achievement", goal: 3, value: (s) => s.playRuns },
+  { id: "dream_to_plan", area: "wallet", kind: "achievement", goal: 1, value: (s) => s.wantForReal },
+  { id: "first_share", area: "discover", kind: "achievement", goal: 1, value: (s) => s.shares },
+  { id: "word_of_mouth", area: "discover", kind: "achievement", goal: 1, value: (s) => s.shareSaves },
+  { id: "first_watch", area: "wallet", kind: "achievement", goal: 1, value: (s) => s.walletAdds },
+  { id: "wish_collector", area: "wallet", kind: "achievement", goal: 5, value: (s) => s.walletAdds },
+  { id: "right_on_time", area: "wallet", kind: "achievement", goal: 1, value: (s) => s.alerts },
+  { id: "first_purchase", area: "spending", kind: "achievement", goal: 1, value: (s) => s.purchases },
+  { id: "saved_25", area: "spending", kind: "achievement", goal: 2500, value: (s) => s.savedCents },
+  { id: "saved_100", area: "spending", kind: "achievement", goal: 10000, value: (s) => s.savedCents },
+  { id: "learning_from_pros", area: "skills", kind: "achievement", goal: 1, value: (s) => s.skillsActive },
+
+  // Sidequests: they only move when other people open or save what you recommend.
+  { id: "deal_sharer", area: "discover", kind: "quest", goal: 3, value: (s) => s.shares },
+  { id: "crowd_pleaser", area: "discover", kind: "quest", goal: 5, value: (s) => s.shareOpens },
+  { id: "fashion_advisor", area: "discover", kind: "quest", goal: 1, value: (s) => s.shareSavesByGroup.fashion },
+  { id: "tech_guide", area: "discover", kind: "quest", goal: 1, value: (s) => s.shareSavesByGroup.tech },
+  { id: "home_scout", area: "discover", kind: "quest", goal: 1, value: (s) => s.shareSavesByGroup.home },
+  { id: "trusted_voice", area: "discover", kind: "quest", goal: 5, value: (s) => s.shareSaves },
 ];
+
+export type CategoryGroup = "fashion" | "tech" | "home";
+
+// Rough grouping of store categories for the sidequests. Unknown categories simply don't count.
+const GROUPS: [CategoryGroup, RegExp][] = [
+  ["fashion", /shirt|tee|dress|jean|pant|jacket|coat|hoodie|sweater|skirt|shoe|sneaker|boot|sandal|apparel|clothing|fashion|sunglass|handbag|bag|watch|jewel|hat|sock/i],
+  ["tech", /headphone|earbud|speaker|phone|laptop|tablet|computer|monitor|keyboard|mouse|camera|console|gaming|controller|drone|charger|tv|television|electronic|smart/i],
+  ["home", /coffee|espresso|kitchen|cook|blender|lamp|light|desk|chair|sofa|furniture|bedding|pillow|decor|vacuum|home|garden|grill/i],
+];
+
+export function categoryGroup(category: string | undefined): CategoryGroup | null {
+  if (!category) return null;
+  return GROUPS.find(([, re]) => re.test(category))?.[0] ?? null;
+}
 
 export interface AchievementState {
   id: string;
   area: Area;
+  kind: AchievementDef["kind"];
   goal: number;
   progress: number; // capped at goal
   unlocked: boolean;
@@ -68,7 +93,7 @@ export interface AchievementState {
 export function achievementStates(stats: ShopperStats): AchievementState[] {
   return ACHIEVEMENTS.map((a) => {
     const value = a.value(stats);
-    return { id: a.id, area: a.area, goal: a.goal, progress: Math.min(value, a.goal), unlocked: value >= a.goal };
+    return { id: a.id, area: a.area, kind: a.kind, goal: a.goal, progress: Math.min(value, a.goal), unlocked: value >= a.goal };
   });
 }
 

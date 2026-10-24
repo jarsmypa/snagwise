@@ -299,6 +299,21 @@ const en = {
   "ach.saved_100.desc": "Save $100 against list prices.",
   "ach.learning_from_pros": "Learning from the pros",
   "ach.learning_from_pros.desc": "Turn on a SnagSkill.",
+
+  "me.quests": "Sidequests",
+  "me.questsHint": "Recommend deals with a story card. These move when other people open or save what you share.",
+  "ach.deal_sharer": "Deal Sharer",
+  "ach.deal_sharer.desc": "Create 3 recommendation cards.",
+  "ach.crowd_pleaser": "Crowd Pleaser",
+  "ach.crowd_pleaser.desc": "Your cards get opened 5 times.",
+  "ach.fashion_advisor": "Fashion Advisor",
+  "ach.fashion_advisor.desc": "Someone saves a clothing, shoe or accessory deal you recommended.",
+  "ach.tech_guide": "Tech Guide",
+  "ach.tech_guide.desc": "Someone saves a tech deal you recommended.",
+  "ach.home_scout": "Home Scout",
+  "ach.home_scout.desc": "Someone saves a home or kitchen deal you recommended.",
+  "ach.trusted_voice": "Trusted Voice",
+  "ach.trusted_voice.desc": "5 of your recommended deals get saved.",
 };
 
 export type Key = keyof typeof en;
@@ -593,6 +608,21 @@ const es: Record<Key, string> = {
   "ach.saved_100.desc": "Ahorrá US$100 contra el precio de lista.",
   "ach.learning_from_pros": "Aprendiendo de los que saben",
   "ach.learning_from_pros.desc": "Activá una SnagSkill.",
+
+  "me.quests": "Misiones secundarias",
+  "me.questsHint": "Recomendá ofertas con una tarjeta para historias. Avanzan cuando otras personas abren o guardan lo que compartís.",
+  "ach.deal_sharer": "Compartiendo ofertas",
+  "ach.deal_sharer.desc": "Creá 3 tarjetas para recomendar.",
+  "ach.crowd_pleaser": "Lo que recomendás se mira",
+  "ach.crowd_pleaser.desc": "Tus tarjetas se abren 5 veces.",
+  "ach.fashion_advisor": "Asesoría de moda",
+  "ach.fashion_advisor.desc": "Alguien guarda una oferta de ropa, calzado o accesorios que recomendaste.",
+  "ach.tech_guide": "Guía tecnológica",
+  "ach.tech_guide.desc": "Alguien guarda una oferta de tecnología que recomendaste.",
+  "ach.home_scout": "Ojo para la casa",
+  "ach.home_scout.desc": "Alguien guarda una oferta de hogar o cocina que recomendaste.",
+  "ach.trusted_voice": "Voz de confianza",
+  "ach.trusted_voice.desc": "Se guardan 5 de las ofertas que recomendaste.",
 };
 
 export type Lang = "en" | "es";

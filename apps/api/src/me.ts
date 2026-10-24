@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { achievementStates, cartTotal, shopperTitles, topCategories, type Offer, type ShopperStats, type TasteProfile } from "@snagwise/core";
+import { achievementStates, cartTotal, categoryGroup, shopperTitles, topCategories, type CategoryGroup, type Offer, type ShopperStats, type TasteProfile } from "@snagwise/core";
 import { nowIso, type DB } from "./db.js";
 
 /*
@@ -15,6 +15,11 @@ const count = (db: DB, sql: string, ...params: (string | number)[]): number => {
 export function shopperStats(db: DB, profile: TasteProfile, budget: { budgetCents: number; spentCents: number }): ShopperStats {
   const events = (kind: string) => count(db, "SELECT COUNT(*) FROM events WHERE kind = ?", kind);
   const runs = db.prepare("SELECT budget_cents, items FROM play_runs").all() as { budget_cents: number; items: string }[];
+  const savesByGroup: Record<CategoryGroup, number> = { fashion: 0, tech: 0, home: 0 };
+  for (const row of db.prepare("SELECT category, saves FROM shares WHERE saves > 0").all() as { category: string; saves: number }[]) {
+    const group = categoryGroup(row.category);
+    if (group) savesByGroup[group] += row.saves;
+  }
   const activeSkills = db.prepare("SELECT value FROM settings WHERE key = 'active_skills'").get() as { value: string } | undefined;
 
   return {
@@ -35,6 +40,7 @@ export function shopperStats(db: DB, profile: TasteProfile, budget: { budgetCent
     shares: count(db, "SELECT COUNT(*) FROM shares"),
     shareOpens: count(db, "SELECT COALESCE(SUM(opens), 0) FROM shares"),
     shareSaves: count(db, "SELECT COALESCE(SUM(saves), 0) FROM shares"),
+    shareSavesByGroup: savesByGroup,
     skillsActive: activeSkills ? (JSON.parse(activeSkills.value) as string[]).length : 0,
     skillsImported: count(db, "SELECT COUNT(*) FROM user_skills"),
     budgetUsedShare: budget.budgetCents ? budget.spentCents / budget.budgetCents : 0,
