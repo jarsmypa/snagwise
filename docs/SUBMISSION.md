@@ -16,11 +16,13 @@ Deal hunting is noisy: endless alerts, impulse buys, and budgets that only show 
 - **Discover:** swipe deals and say *what* you liked — the product, the price, or both. "Love the product, not the price" lowers the price Snagwise aims for in that category.
 - **Recommend:** any deal becomes a 9:16 story card with a QR code. Scans and saves from friends feed back into your taste profile.
 - **SnagSkills:** add community shopping know-how to your session (gamers, runners, coffee lovers…). The agent reads skills as tips, never as instructions.
-- **Spending:** monthly budget, expenses and savings, in an AG Grid table.
+- **Spending:** monthly budget, expenses and savings, in an AG Grid table, with a 24-hour "changed my mind" refund through PayPal.
+- **Landed in Asunción:** for shoppers in Paraguay who buy from US stores through a Miami courier, the budget check uses the real landed cost (Florida sales tax, courier by weight, import tax) and shows guaraníes. Most deal apps stop at the store price.
+- **Sidequests:** recommend deals; when friends act on them you unlock sidequests and earn small rewards paid with PayPal Payouts.
 
 ## How we built it
 - React + Vite web app, Hono + SQLite API, shared TypeScript rules package with tests.
-- **PayPal:** Orders v2 in the sandbox with the PayPal JS SDK buttons; the server re-validates target and budget before creating each order and records the expense on capture.
+- **PayPal:** Orders v2 with the JS SDK buttons for purchases (the server re-validates target and budget before creating each order), the captures refund API for the 24-hour undo, and Payouts for sidequest rewards, all in the sandbox.
 - **AI at zero cost:** free tiers of Gemini, Groq and OpenRouter rotate automatically when one hits its rate limit. Every request starts from a Markdown context file built from app state, so the next model continues exactly where the previous one stopped — even mid-answer. Users can bring their own Claude, Gemini, Groq or OpenRouter key.
 - **Product data:** Channel3 product search.
 

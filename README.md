@@ -11,6 +11,10 @@ Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/). Eve
 | **Assistant** | Chat with the agent: "find wireless earbuds under $80 that match my taste". It searches real products, saves them to your wallet and proposes purchases that fit your budget. |
 | **Discover** | Swipe deals. Say *what* you liked — the product, the price, or both — and Snagwise learns your taste and your price comfort per category. |
 | **Play money** | A store with real products and pretend money ("if I had $5,000…"). It scratches the shopping itch without spending, shows your shopping style, teaches your taste profile, and anything you still want goes to your real wallet with a target price. |
+| **Landed in Asunción** | Buying from Paraguay through a Miami courier? Snagwise adds Florida sales tax, courier by weight and import tax, shows guaraníes, and checks the *landed* cost against your budget, not just the store price. |
+| **24-hour undo** | Changed your mind? Any Snagwise purchase can be fully refunded through PayPal for 24 hours. |
+| **Sidequests & rewards** | Recommend deals with QR story cards. When friends open or save them you unlock sidequests (Fashion Advisor, Tech Guide…) and earn small rewards paid with **PayPal Payouts** (sandbox only). |
+| **Shopper card** | A kind title, tags and 18 achievements computed from what you do, in English and gender-neutral Spanish. |
 | **Price alerts** | A bell (and optional browser notification) when something in your wallet reaches your target price. |
 | **English / Spanish** | The whole app switches language; the AI already answers in yours. |
 | **Recommend** | Turn a deal you like into a 9:16 story card with a QR code. Friends who scan it can save the deal; every scan and save teaches your profile. |
@@ -26,6 +30,7 @@ In this demo the sandbox order is collected by the app's own merchant test accou
 - **Free AI providers, rotating** — Gemini (Google AI Studio), Groq and OpenRouter free tiers, through their OpenAI-compatible chat APIs with tool calling. When one hits its limit (HTTP 429), it cools down (1 min, doubling up to 6 h, or the provider's `Retry-After`) and the next one answers. You can also pick one in the chat.
 - **A shared context file** — every request starts from a Markdown file built from app state: taste profile, budget, wallet, active SnagSkills, actions already taken and the recent conversation. When a model hands off mid-conversation, or even mid-answer, the next one reads the same file and does not repeat what was done. Building it uses no AI. You can open it from the chat.
 - **Bring your own key** — users can connect their own Claude (official Anthropic SDK, `claude-opus-5-5` by default, server-side refusal fallbacks on), Gemini, Groq or OpenRouter key. It is sent only with their messages and is never stored or logged.
+- **PayPal, end to end** — Orders v2 + JS SDK buttons for every purchase, the captures refund API for the 24-hour undo, and Payouts for sidequest rewards. The budget and target rules are re-checked on the server before any order exists, and Payouts refuses to run with live credentials.
 - **Tools the agent can call** — `get_taste_profile`, `get_budget`, `list_wallet`, `search_products`, `add_to_wallet`, `propose_purchase`. None of them can pay.
 - **Taste learning without a model** — swipes, the reason for each like, QR referrals and shared-card performance feed a profile (`packages/core/src/taste.ts`) that ranks results for both Discover and the agent.
 

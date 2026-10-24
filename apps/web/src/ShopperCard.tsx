@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatMoney, type Area, type TitleId } from "@snagwise/core";
-import { api, type Me } from "./api";
+import { api, type Me, type Rewards } from "./api";
 import { useI18n, type Key } from "./i18n";
 
 const POLL_MS = 15_000;
@@ -27,7 +27,9 @@ function progressLabel(id: string, progress: number, goal: number): string {
   return id.startsWith("saved_") ? `${formatMoney(progress)} / ${formatMoney(goal)}` : `${progress} / ${goal}`;
 }
 
-function AchievementList({ items }: { items: Me["achievements"] }) {
+type RewardSlot = { amountCents: number; paid: boolean; claimable: boolean; busy: boolean; onClaim: () => void };
+
+function AchievementList({ items, rewards }: { items: Me["achievements"]; rewards?: Record<string, RewardSlot> }) {
   const { t } = useI18n();
   return (
     <ul className="achievements">
@@ -44,9 +46,48 @@ function AchievementList({ items }: { items: Me["achievements"] }) {
               </div>
             </span>
           )}
+          {rewards?.[a.id] && <RewardLine slot={rewards[a.id]!} />}
         </li>
       ))}
     </ul>
+  );
+}
+
+// Sidequest reward: PayPal Payouts in the sandbox demo.
+function RewardLine({ slot }: { slot: RewardSlot }) {
+  const { t } = useI18n();
+  const amount = formatMoney(slot.amountCents);
+  if (slot.paid) return <span className="reward paid">{t("rewards.paid", { amount })}</span>;
+  if (slot.claimable)
+    return (
+      <button className="reward-claim" disabled={slot.busy} onClick={slot.onClaim}>
+        {slot.busy ? t("rewards.sending") : t("rewards.claim", { amount })}
+      </button>
+    );
+  return <span className="reward">{t("rewards.worth", { amount })}</span>;
+}
+
+function RewardsSetup({ rewards, onSaved }: { rewards: Rewards; onSaved: () => void }) {
+  const { t } = useI18n();
+  const [error, setError] = useState<string | null>(null);
+  if (!rewards.available) return <p className="hint small">{t("rewards.unavailable")}</p>;
+  if (rewards.email) return <p className="hint small">{t("rewards.to", { email: rewards.email })}</p>;
+  return (
+    <form
+      className="row"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const email = String(new FormData(e.currentTarget).get("email") ?? "").trim();
+        api.setRewardEmail(email).then(onSaved, (err: unknown) => setError(err instanceof Error ? err.message : String(err)));
+      }}
+    >
+      <label className="grow">
+        {t("rewards.emailLabel")}
+        <input name="email" type="email" required placeholder="sb-…@personal.example.com" autoComplete="off" />
+      </label>
+      <button>{t("rewards.saveEmail")}</button>
+      {error && <p role="alert">{error}</p>}
+    </form>
   );
 }
 
@@ -57,6 +98,30 @@ export function ShopperCard({ refreshKey }: { refreshKey: string }) {
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<{ ids: string[]; area: Area } | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [rewards, setRewards] = useState<Rewards | null>(null);
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const [rewardError, setRewardError] = useState<string | null>(null);
+
+  const loadRewards = useCallback(() => {
+    api.rewards().then(setRewards, () => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (open) loadRewards();
+  }, [open, loadRewards]);
+
+  const claim = async (questId: string) => {
+    setClaiming(questId);
+    setRewardError(null);
+    try {
+      await api.claimReward(questId);
+      loadRewards();
+    } catch (err) {
+      setRewardError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setClaiming(null);
+    }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -126,7 +191,30 @@ export function ShopperCard({ refreshKey }: { refreshKey: string }) {
 
             <h3>{t("me.quests")}</h3>
             <p className="hint small">{t("me.questsHint")}</p>
-            <AchievementList items={me.achievements.filter((a) => a.kind === "quest")} />
+            {rewards && <RewardsSetup rewards={rewards} onSaved={loadRewards} />}
+            <AchievementList
+              items={me.achievements.filter((a) => a.kind === "quest")}
+              {...(rewards
+                ? {
+                    rewards: Object.fromEntries(
+                      rewards.rewards.map((r) => {
+                        const unlocked = me.achievements.some((a) => a.id === r.questId && a.unlocked);
+                        return [
+                          r.questId,
+                          {
+                            amountCents: r.amountCents,
+                            paid: r.paid !== null,
+                            claimable: rewards.available && Boolean(rewards.email) && unlocked && r.paid === null,
+                            busy: claiming === r.questId,
+                            onClaim: () => void claim(r.questId),
+                          },
+                        ];
+                      }),
+                    ),
+                  }
+                : {})}
+            />
+            {rewardError && <p role="alert">{rewardError}</p>}
 
             <div className="row spread">
               <h3>{t("me.achievements")}</h3>

@@ -1,4 +1,4 @@
-import type { AchievementState, Offer, PlayResult, Reason, Skill, TasteProfile, TitleId, Transaction, Verdict } from "@snagwise/core";
+import type { AchievementState, CourierSettings, Offer, PlayResult, Reason, Skill, TasteProfile, TitleId, Transaction, Verdict } from "@snagwise/core";
 
 export interface Me {
   title: TitleId;
@@ -6,6 +6,22 @@ export interface Me {
   tags: string[];
   achievements: (AchievementState & { unlockedAt: string | null })[];
   newlyUnlocked: string[];
+}
+
+export interface Purchase {
+  id: string;
+  date: string;
+  amountCents: number;
+  merchant: string;
+  category: string;
+  refundedAt: string | null;
+  refundableUntil: string | null;
+}
+
+export interface Rewards {
+  available: boolean;
+  email: string | null;
+  rewards: { questId: string; amountCents: number; paid: { status: string; at: string } | null }[];
 }
 
 export interface PriceAlert {
@@ -174,4 +190,11 @@ export const api = {
   addWishFromOffer: (offer: Offer, targetCents: number, from?: "play") =>
     request<Wish>("/api/wishlist", send("POST", { query: offer.title, targetCents, offer, ...(from ? { from } : {}) })),
   me: () => request<Me>("/api/me"),
+  courier: () => request<CourierSettings>("/api/courier"),
+  saveCourier: (settings: CourierSettings) => request<CourierSettings>("/api/courier", send("PUT", settings)),
+  purchases: () => request<Purchase[]>("/api/purchases"),
+  refund: (id: string) => request<{ status: string; budget: Budget }>(`/api/purchases/${id}/refund`, send("POST")),
+  rewards: () => request<Rewards>("/api/rewards"),
+  setRewardEmail: (email: string) => request<{ email: string }>("/api/rewards/email", send("PUT", { email })),
+  claimReward: (questId: string) => request<{ status: string; amountCents: number }>(`/api/rewards/${questId}/claim`, send("POST")),
 };

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
-import { formatMoney, savingsCents, topCategories, type Offer, type Reason } from "@snagwise/core";
+import { formatMoney, savingsCents, topCategories, type CourierSettings, type Offer, type Reason } from "@snagwise/core";
+import { Landed } from "./Landed";
 import { api } from "./api";
 import { ShareCard } from "./ShareCard";
 import { PlayMoney } from "./PlayMoney";
@@ -12,7 +13,7 @@ type Stage = { kind: "browse" } | { kind: "why" } | { kind: "liked"; reasons: Re
 type Mode = "swipe" | "play";
 
 // Two ways to teach Snagwise your taste: swipe real deals, or shop with play money.
-export function Discover({ onWalletChange }: { onWalletChange: () => void }) {
+export function Discover({ onWalletChange, courier }: { onWalletChange: () => void; courier: CourierSettings | null }) {
   const { t } = useI18n();
   const [mode, setMode] = useState<Mode>("swipe");
 
@@ -27,13 +28,13 @@ export function Discover({ onWalletChange }: { onWalletChange: () => void }) {
           {t("discover.playMode")}
         </button>
       </div>
-      {mode === "swipe" ? <SwipeDeck onWalletChange={onWalletChange} /> : <PlayMoney onWalletChange={onWalletChange} />}
+      {mode === "swipe" ? <SwipeDeck onWalletChange={onWalletChange} courier={courier} /> : <PlayMoney onWalletChange={onWalletChange} />}
     </section>
   );
 }
 
 // Swipe to teach Snagwise your taste. Each answer, and why, feeds the profile the agent reads.
-function SwipeDeck({ onWalletChange }: { onWalletChange: () => void }) {
+function SwipeDeck({ onWalletChange, courier }: { onWalletChange: () => void; courier: CourierSettings | null }) {
   const { t } = useI18n();
   const [cards, setCards] = useState<Offer[]>([]);
   const [sample, setSample] = useState(false);
@@ -168,6 +169,7 @@ function SwipeDeck({ onWalletChange }: { onWalletChange: () => void }) {
                 {card.compareAtCents !== undefined && card.compareAtCents > card.priceCents && <s>{money(card.compareAtCents)}</s>}
                 {savingsCents(card) > 0 && <span className="deal">{t("deal.save", { amount: money(savingsCents(card)) })}</span>}
               </p>
+              <Landed offer={card} courier={courier} />
             </div>
             {drag !== 0 && <span className={`stamp ${drag > 0 ? "yes" : "no"}`}>{drag > 0 ? t("swipe.stampYes") : t("swipe.stampNo")}</span>}
           </div>

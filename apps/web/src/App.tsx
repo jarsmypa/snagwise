@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
-import { formatMoney, monthOf, savingsCents, toCents, type Offer, type Transaction, type Verdict } from "@snagwise/core";
+import { formatMoney, monthOf, savingsCents, toCents, type CourierSettings, type Offer, type Transaction, type Verdict } from "@snagwise/core";
 import { api, ApiError, setAccessCode, type Budget, type Config, type Health, type Wish } from "./api";
 import { PayPalButton } from "./PayPalButton";
 import { Discover } from "./Discover";
@@ -9,6 +9,9 @@ import { Logo } from "./Logo";
 import { Alerts } from "./Alerts";
 import { ShopperCard } from "./ShopperCard";
 import { ShareCard } from "./ShareCard";
+import { Landed, Pyg } from "./Landed";
+import { CourierSettingsForm } from "./CourierSettingsForm";
+import { Purchases } from "./Purchases";
 import { LangSwitch, useI18n, type Key } from "./i18n";
 // AG Grid is the heaviest dependency: load it only when the Spending tab opens.
 const SpendingGrid = lazy(() => import("./SpendingGrid").then((m) => ({ default: m.SpendingGrid })));
@@ -47,14 +50,16 @@ export function App() {
   const [alertsKey, setAlertsKey] = useState(0);
   const [checkNote, setCheckNote] = useState<string | null>(null);
   const [sharing, setSharing] = useState<Offer | null>(null);
+  const [courier, setCourier] = useState<CourierSettings | null>(null);
 
   // "2026-10" → "October" / "octubre"
   const monthName = (ym: string) => new Date(`${ym}-15T12:00:00Z`).toLocaleDateString(locale, { month: "long", timeZone: "UTC" });
 
   const refresh = useCallback(async () => {
     try {
-      const [h, c, b, tx, w, s] = await Promise.all([api.health(), api.config(), api.budget(), api.transactions(), api.wishlist(), api.savings()]);
+      const [h, c, b, tx, w, s, cs] = await Promise.all([api.health(), api.config(), api.budget(), api.transactions(), api.wishlist(), api.savings(), api.courier()]);
       setSavings(s);
+      setCourier(cs);
       setHealth(h);
       setConfig(c);
       setBudget(b);
@@ -162,7 +167,10 @@ export function App() {
           <div className="band-tools">
             {budget && (
               <div className="left-to-spend" aria-live="polite">
-                <strong>{money(budget.remainingCents)}</strong>
+                <strong>
+                  {money(budget.remainingCents)}
+                  <Pyg cents={budget.remainingCents} courier={courier} />
+                </strong>
                 {t("band.left", { month: monthName(budget.month), total: money(budget.budgetCents) })}
                 <div className="meter" role="progressbar" aria-label={t("band.used")} aria-valuemin={0} aria-valuemax={budget.budgetCents} aria-valuenow={budget.spentCents}>
                   <div style={{ width: `${spentShare}%` }} />
@@ -191,7 +199,7 @@ export function App() {
         {error && <p role="alert">{error}</p>}
 
         {tab === "assistant" && <Assistant config={config} onWalletChange={() => void refresh()} onAccessNeeded={() => setNeedAccess(true)} />}
-        {tab === "discover" && <Discover onWalletChange={() => void refresh()} />}
+        {tab === "discover" && <Discover courier={courier} onWalletChange={() => void refresh()} />}
         {tab === "skills" && <SnagSkills />}
 
         {tab === "wallet" && (
@@ -249,6 +257,7 @@ export function App() {
                     ) : (
                       <p className="hint">{t("wallet.notChecked")}</p>
                     )}
+                    {offer && <Landed offer={offer} courier={courier} />}
                     {verdict !== undefined && <p>{verdict ? t(VERDICT_TEXT[verdict.reason]) : t("wallet.noOffers")}</p>}
                     <div className="row">
                       <button className="quiet" onClick={() => void check(w.id)} disabled={busy === `check-${w.id}`}>
@@ -298,6 +307,7 @@ export function App() {
                 <SpendingGrid rows={thisMonth} />
               </Suspense>
             )}
+            <Purchases onChange={() => void refresh()} />
             {savings && savings.purchases > 0 && (
               <p className="savings-line">
                 {t("spending.purchases", { n: savings.purchases })}
@@ -321,6 +331,8 @@ export function App() {
             </form>
           </section>
         )}
+
+        {tab === "wallet" && courier && <CourierSettingsForm courier={courier} onSaved={setCourier} />}
 
         {health && (
           <footer className="status">

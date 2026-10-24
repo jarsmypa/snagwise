@@ -1208,3 +1208,102 @@ main[data-area] .segmented button.on {
     justify-content: flex-start;
   }
 }
+
+/* --- Landed in Asunción --- */
+
+details.landed {
+  margin: 0.25rem 0 0.5rem;
+}
+
+details.landed summary {
+  padding: 0.25rem 0;
+  color: var(--ink);
+}
+
+details.landed dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.2rem 1rem;
+  margin: 0.25rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-control);
+  font-size: 0.9rem;
+}
+
+details.landed dt {
+  color: var(--muted);
+}
+
+details.landed dd {
+  margin: 0;
+  text-align: right;
+}
+
+.warn-text {
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.6rem 1rem;
+}
+
+/* --- Purchases with the 24-hour undo --- */
+
+.purchases {
+  margin-top: 1.25rem;
+}
+
+.purchases ul {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.purchases li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem 1rem;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-piece);
+}
+
+.purchases li > :last-child {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.purchases .refunded {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* --- Sidequest rewards --- */
+
+.reward,
+.reward-claim {
+  grid-column: 1 / -1;
+  justify-self: start;
+  font: 700 0.8rem var(--font-num);
+}
+
+.reward {
+  color: var(--muted);
+}
+
+.reward.paid {
+  color: var(--area);
+}
+
+.reward-claim {
+  min-height: 36px;
+  padding: 0.2rem 0.7rem;
+}
