@@ -80,9 +80,10 @@ export function registerDiscover(app: Hono, db: DB, channel3Key: string | undefi
       .run(offer.productId, JSON.stringify(offer), offer.category ?? "Other", offer.brand ?? null, offer.priceCents, liked ? 1 : 0, JSON.stringify(reasons), source, nowIso());
 
   // A deck of offers ranked by the learned profile, with a little randomness so it keeps exploring.
-  app.get("/api/discover", async (c) => {
+  // Candidates ranked by taste and active skills, with a little randomness so it keeps exploring.
+  const deck = async (size: number, skipSeen: boolean): Promise<Offer[]> => {
     const p = profile();
-    const seen = new Set(reactions().map((r) => r.productId));
+    const seen = skipSeen ? new Set(reactions().map((r) => r.productId)) : new Set<string>();
     const skills = activeSkills();
     let candidates: Offer[];
     if (channel3Key) {
@@ -95,14 +96,15 @@ export function registerDiscover(app: Hono, db: DB, channel3Key: string | undefi
     } else {
       candidates = SAMPLE_CATALOG;
     }
-    const cards = candidates
+    return candidates
       .filter((o) => !seen.has(o.productId))
       .map((o) => ({ o, score: scoreOffer(p, o) + skillScore(skills, o) + Math.random() * 1.5 }))
       .sort((a, b) => b.score - a.score)
-      .slice(0, DECK_SIZE)
+      .slice(0, size)
       .map(({ o }) => o);
-    return c.json({ sample: !channel3Key, cards });
-  });
+  };
+
+  app.get("/api/discover", async (c) => c.json({ sample: !channel3Key, cards: await deck(DECK_SIZE, true) }));
 
   app.post("/api/reactions", async (c) => {
     const body = z
@@ -169,6 +171,15 @@ export function registerDiscover(app: Hono, db: DB, channel3Key: string | undefi
 
   return {
     profile,
+    deck,
+    sample: !channel3Key,
+    // Play-money picks never overwrite what the user said for real in Discover.
+    savePlayPick: (offer: Offer) =>
+      db
+        .prepare(
+          "INSERT OR IGNORE INTO reactions (product_id, offer, category, brand, price_cents, liked, reasons, source, created_at) VALUES (?, ?, ?, ?, ?, 1, '[]', 'game', ?)",
+        )
+        .run(offer.productId, JSON.stringify(offer), offer.category ?? "Other", offer.brand ?? null, offer.priceCents, nowIso()),
     search: (query: string) => (channel3Key ? searchProducts(channel3Key, query, 10) : Promise.resolve(searchSample(query))),
   };
 }

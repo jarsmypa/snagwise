@@ -94,7 +94,7 @@ describe("wallet extras", () => {
     const { db, app } = setup();
     await app.request("/api/wishlist", json("POST", { query: "desk lamp", targetCents: 3_500 }));
     const cheap: Offer = { productId: "x", title: "Desk lamp", url: "https://example.com/x", domain: "example.com", priceCents: 3_200, currency: "USD" };
-    expect(await refreshWalletPrices(db, async () => [cheap])).toBe(1);
+    expect(await refreshWalletPrices(db, async () => [cheap])).toEqual({ updated: 1, alerts: 1 });
     const [item] = (await (await app.request("/api/wishlist")).json()) as { bestOffer: Offer | null }[];
     expect(item?.bestOffer?.priceCents).toBe(3_200);
   });
@@ -107,6 +107,19 @@ describe("wallet extras", () => {
     await refreshWalletPrices(db, async () => [sony, { ...jvc, priceCents: 11_499 }]);
     const [item] = (await (await app.request("/api/wishlist")).json()) as { bestOffer: Offer }[];
     expect(item!.bestOffer).toMatchObject({ productId: "jvc", priceCents: 11_499 });
+  });
+
+  it("raises a price alert once when an item reaches its target", async () => {
+    const { db, app } = setup();
+    const lamp: Offer = { productId: "l1", title: "Desk lamp", url: "https://example.com/l", domain: "example.com", priceCents: 5_000, currency: "USD" };
+    await app.request("/api/wishlist", json("POST", { query: "Desk lamp", targetCents: 4_000, offer: lamp }));
+    expect(await refreshWalletPrices(db, async () => [{ ...lamp, priceCents: 3_900 }])).toEqual({ updated: 1, alerts: 1 });
+    expect(await refreshWalletPrices(db, async () => [{ ...lamp, priceCents: 3_900 }])).toEqual({ updated: 1, alerts: 0 });
+    const list = (await (await app.request("/api/alerts")).json()) as { unread: number; alerts: { title: string; priceCents: number }[] };
+    expect(list.unread).toBe(1);
+    expect(list.alerts[0]).toMatchObject({ title: "Desk lamp", priceCents: 3_900 });
+    expect((await app.request("/api/alerts/read", { method: "POST" })).status).toBe(204);
+    expect(((await (await app.request("/api/alerts")).json()) as { unread: number }).unread).toBe(0);
   });
 
   it("reports savings from purchases", async () => {

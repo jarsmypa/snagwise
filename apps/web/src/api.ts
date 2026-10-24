@@ -1,4 +1,15 @@
-import type { Offer, Reason, Skill, TasteProfile, Transaction, Verdict } from "@snagwise/core";
+import type { Offer, PlayResult, Reason, Skill, TasteProfile, Transaction, Verdict } from "@snagwise/core";
+
+export interface PriceAlert {
+  id: string;
+  wishId: string;
+  title: string;
+  store: string;
+  priceCents: number;
+  targetCents: number;
+  createdAt: string;
+  read: boolean;
+}
 
 export interface SkillItem extends Skill {
   origin: "community" | "imported";
@@ -146,5 +157,11 @@ export const api = {
   importSkill: (markdown: string) => request<SkillItem>("/api/skills/import", send("POST", { markdown })),
   removeSkill: (id: string) => request<null>(`/api/skills/${id}`, send("DELETE")),
   savings: () => request<{ savedCents: number; purchases: number }>("/api/savings"),
+  alerts: () => request<{ unread: number; alerts: PriceAlert[] }>("/api/alerts"),
+  readAlerts: () => request<null>("/api/alerts/read", send("POST")),
+  checkAll: () => request<{ updated: number; alerts: number }>("/api/wishlist/check-all", send("POST")),
+  playStore: () => request<{ sample: boolean; items: Offer[] }>("/api/play/store"),
+  playCheckout: (budgetCents: number, items: Offer[]) =>
+    request<{ result: PlayResult; learned: string[] }>("/api/play/checkout", send("POST", { budgetCents, items })),
   addWishFromOffer: (offer: Offer, targetCents: number) => request<Wish>("/api/wishlist", send("POST", { query: offer.title, targetCents, offer })),
 };

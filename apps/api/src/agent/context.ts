@@ -15,6 +15,7 @@ export interface ContextInput {
   recent: { user: string; assistant: string; provider: string }[];
   notes: string[]; // actions the agent took (wallet adds, proposals), newest last
   skills: { skill: Skill; origin: "community" | "imported" }[];
+  alerts: { title: string; store: string; priceCents: number; targetCents: number }[]; // unread price alerts
   handoff?: { from: string; to: string; reason: string };
 }
 
@@ -49,6 +50,11 @@ export function buildContextMd(c: ContextInput): string {
   for (const w of c.wallet) {
     const offer = w.bestOffer ? ` · best seen ${money(w.bestOffer.priceCents)} at ${w.bestOffer.domain}` : " · price not checked";
     lines.push(`- [${w.id}] ${w.query} · target ${money(w.targetCents)}${offer}`);
+  }
+
+  if (c.alerts.length) {
+    lines.push("", "## New price alerts", "Wallet items that reached the user's target since they last looked:");
+    for (const a of c.alerts.slice(0, 5)) lines.push(`- ${a.title} at ${a.store}: ${money(a.priceCents)} (target ${money(a.targetCents)})`);
   }
 
   if (c.skills.length) {

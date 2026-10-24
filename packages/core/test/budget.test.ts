@@ -8,6 +8,7 @@ import {
   spentInMonth,
   toCents,
   trackOffer,
+  shouldAlert,
   type Offer,
   type Transaction,
   type WishItem,
@@ -73,6 +74,14 @@ describe("offers", () => {
     expect(trackOffer(saved, [offer(10_000, { productId: "other", title: "jvc wireless headphones!" })], "USD")?.priceCents).toBe(10_000);
     expect(trackOffer(saved, [results[0]!], "USD")).toBeUndefined();
     expect(trackOffer(null, results, "USD")?.productId).toBe("sony");
+  });
+
+  it("alerts when the price reaches the target, and only again if it keeps dropping", () => {
+    expect(shouldAlert(offer(13_000), offer(11_000), 12_000)).toBe(true);
+    expect(shouldAlert(null, offer(11_000), 12_000)).toBe(true);
+    expect(shouldAlert(offer(11_000), offer(11_000), 12_000)).toBe(false);
+    expect(shouldAlert(offer(11_000), offer(10_500), 12_000)).toBe(true);
+    expect(shouldAlert(offer(11_000), offer(12_500), 12_000)).toBe(false);
   });
 
   it("reports savings only against a higher list price", () => {

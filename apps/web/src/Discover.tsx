@@ -2,14 +2,39 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent } from "rea
 import { formatMoney, savingsCents, topCategories, type Offer, type Reason } from "@snagwise/core";
 import { api } from "./api";
 import { ShareCard } from "./ShareCard";
+import { PlayMoney } from "./PlayMoney";
+import { useI18n } from "./i18n";
 
 const SWIPE_THRESHOLD = 110;
 const money = formatMoney;
 
 type Stage = { kind: "browse" } | { kind: "why" } | { kind: "liked"; reasons: Reason[] };
+type Mode = "swipe" | "play";
+
+// Two ways to teach Snagwise your taste: swipe real deals, or shop with play money.
+export function Discover({ onWalletChange }: { onWalletChange: () => void }) {
+  const { t } = useI18n();
+  const [mode, setMode] = useState<Mode>("swipe");
+
+  return (
+    <section aria-labelledby="discover-title">
+      <h2 id="discover-title">{t("tab.discover")}</h2>
+      <div className="segmented" role="tablist" aria-label={t("discover.modes")}>
+        <button role="tab" aria-selected={mode === "swipe"} className={mode === "swipe" ? "on" : ""} onClick={() => setMode("swipe")}>
+          {t("discover.swipeMode")}
+        </button>
+        <button role="tab" aria-selected={mode === "play"} className={mode === "play" ? "on" : ""} onClick={() => setMode("play")}>
+          {t("discover.playMode")}
+        </button>
+      </div>
+      {mode === "swipe" ? <SwipeDeck onWalletChange={onWalletChange} /> : <PlayMoney onWalletChange={onWalletChange} />}
+    </section>
+  );
+}
 
 // Swipe to teach Snagwise your taste. Each answer, and why, feeds the profile the agent reads.
-export function Discover({ onWalletChange }: { onWalletChange: () => void }) {
+function SwipeDeck({ onWalletChange }: { onWalletChange: () => void }) {
+  const { t } = useI18n();
   const [cards, setCards] = useState<Offer[]>([]);
   const [sample, setSample] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: "browse" });
@@ -96,29 +121,28 @@ export function Discover({ onWalletChange }: { onWalletChange: () => void }) {
     try {
       await api.addWishFromOffer(offer, target);
       onWalletChange();
-      setNote(`Saved. Snagwise will watch for ${money(target)} or less.`);
+      setNote(t("swipe.saved", { amount: money(target) }));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
   };
 
   return (
-    <section aria-labelledby="discover-title">
-      <div className="row spread">
-        <h2 id="discover-title">Discover</h2>
-        {sample && <span className="badge">Sample catalog · dev only</span>}
-      </div>
+    <>
+      {sample && <span className="badge">{t("common.sampleCatalog")}</span>}
       {learning && (
         <p className="hint">
           {learning.signals === 0
-            ? "Swipe right on what you like, left on what you don't. Snagwise learns from every answer."
-            : `Learning from ${learning.signals} ${learning.signals === 1 ? "signal" : "signals"}${learning.top.length ? ` · into ${learning.top.slice(0, 3).join(", ")}` : ""}`}
+            ? t("swipe.intro")
+            : learning.top.length
+              ? t("swipe.learningInto", { n: learning.signals, top: learning.top.slice(0, 3).join(", ") })
+              : t("swipe.learning", { n: learning.signals })}
         </p>
       )}
       {error && <p role="alert">{error}</p>}
 
       {!card ? (
-        <p className="hint">Loading more deals…</p>
+        <p className="hint">{t("swipe.loading")}</p>
       ) : (
         <div className="deck">
           <div
@@ -133,56 +157,62 @@ export function Discover({ onWalletChange }: { onWalletChange: () => void }) {
               <img src={card.imageUrl} alt="" draggable={false} />
             ) : (
               <div className="placeholder" aria-hidden="true">
-                {card.category ?? "Deal"}
+                {card.category ?? t("swipe.deal")}
               </div>
             )}
             <div className="swipe-body">
               <strong>{card.title}</strong>
-              <span className="hint">
-                {[card.brand, card.domain].filter(Boolean).join(" · ")}
-              </span>
+              <span className="hint">{[card.brand, card.domain].filter(Boolean).join(" · ")}</span>
               <p className="price">
                 {money(card.priceCents)}
                 {card.compareAtCents !== undefined && card.compareAtCents > card.priceCents && <s>{money(card.compareAtCents)}</s>}
-                {savingsCents(card) > 0 && <span className="deal">save {money(savingsCents(card))}</span>}
+                {savingsCents(card) > 0 && <span className="deal">{t("deal.save", { amount: money(savingsCents(card)) })}</span>}
               </p>
             </div>
-            {drag !== 0 && <span className={`stamp ${drag > 0 ? "yes" : "no"}`}>{drag > 0 ? "LIKE" : "NOPE"}</span>}
+            {drag !== 0 && <span className={`stamp ${drag > 0 ? "yes" : "no"}`}>{drag > 0 ? t("swipe.stampYes") : t("swipe.stampNo")}</span>}
           </div>
 
           {stage.kind === "browse" && (
             <div className="row center">
-              <button className="quiet" onClick={() => void answer(false, [])} aria-label="Not for me">
-                ✕ Nope
+              <button className="quiet" onClick={() => void answer(false, [])} aria-label={t("swipe.nopeLabel")}>
+                ✕ {t("swipe.nope")}
               </button>
-              <button onClick={() => setStage({ kind: "why" })} aria-label="I like it">
-                ♥ Like
+              <button onClick={() => setStage({ kind: "why" })} aria-label={t("swipe.likeLabel")}>
+                ♥ {t("swipe.like")}
               </button>
             </div>
           )}
 
           {stage.kind === "why" && (
             <div className="panel">
-              <p>What did you like?</p>
+              <p>{t("swipe.why")}</p>
               <div className="row center">
-                <button className="quiet" onClick={() => void answer(true, ["product"])}>The product</button>
-                <button className="quiet" onClick={() => void answer(true, ["price"])}>The price</button>
-                <button className="quiet" onClick={() => void answer(true, ["product", "price"])}>Both</button>
+                <button className="quiet" onClick={() => void answer(true, ["product"])}>
+                  {t("swipe.product")}
+                </button>
+                <button className="quiet" onClick={() => void answer(true, ["price"])}>
+                  {t("swipe.price")}
+                </button>
+                <button className="quiet" onClick={() => void answer(true, ["product", "price"])}>
+                  {t("swipe.both")}
+                </button>
               </div>
               <button className="link" onClick={() => setStage({ kind: "browse" })}>
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           )}
 
           {stage.kind === "liked" && (
             <div className="panel">
-              <p>{note ?? "Noted. What next?"}</p>
+              <p>{note ?? t("swipe.noted")}</p>
               <div className="row center">
-                {!note && <button onClick={() => void saveToWallet(card, stage.reasons)}>Save to wallet</button>}
-                <button className="quiet" onClick={() => setSharing(card)}>Recommend</button>
+                {!note && <button onClick={() => void saveToWallet(card, stage.reasons)}>{t("swipe.saveWallet")}</button>}
+                <button className="quiet" onClick={() => setSharing(card)}>
+                  {t("swipe.recommend")}
+                </button>
                 <button className="quiet" onClick={next}>
-                  Next deal
+                  {t("swipe.next")}
                 </button>
               </div>
             </div>
@@ -191,6 +221,6 @@ export function Discover({ onWalletChange }: { onWalletChange: () => void }) {
       )}
 
       {sharing && <ShareCard offer={sharing} onClose={() => setSharing(null)} />}
-    </section>
+    </>
   );
 }

@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { evaluateOffer, monthOf, remainingBudget, savingsCents, trackOffer, type Offer, type Skill, type Transaction } from "@snagwise/core";
 import { registerSkills } from "./skills.js";
+import { recordPrice, registerAlerts, unreadAlerts } from "./watch.js";
+import { registerPlay } from "./play.js";
 import { nowIso, type DB } from "./db.js";
 import { searchProducts } from "./channel3.js";
 import { captureOrder, createOrder, type PayPalConfig } from "./paypal.js";
@@ -138,11 +140,8 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
     const saved = row.best_offer ? (JSON.parse(row.best_offer) as Offer) : null;
     const offer = trackOffer(saved, await searchProducts(env.channel3Key, row.query), row.currency);
     // Not found right now: keep the last known offer, but don't propose buying on a stale price.
-    db.prepare("UPDATE wishlist SET best_offer = ?, last_checked_at = ? WHERE id = ?").run(
-      offer ? JSON.stringify(offer) : row.best_offer,
-      nowIso(),
-      row.id,
-    );
+    if (offer) recordPrice(db, row, offer);
+    else db.prepare("UPDATE wishlist SET last_checked_at = ? WHERE id = ?").run(nowIso(), row.id);
     const wish = toWish(getWish(row.id)!);
     const verdict = offer ? evaluateOffer(wish, offer, budgetSummary().remainingCents) : null;
     return c.json({ wish, verdict });
@@ -187,6 +186,16 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
 
   const skills = registerSkills(app, db, env.communitySkills ?? []);
   const discover = registerDiscover(app, db, env.channel3Key, () => skills.active().map((s) => s.skill));
+  registerPlay(app, db, {
+    deck: discover.deck,
+    search: discover.search,
+    sample: discover.sample,
+    savePlayPick: discover.savePlayPick,
+    profile: discover.profile,
+    monthlyBudgetCents: () => budgetSummary().budgetCents,
+  });
+  const channel3 = env.channel3Key;
+  registerAlerts(app, db, channel3 ? (q) => searchProducts(channel3, q, 10) : null);
 
   const wallet = () => (db.prepare("SELECT * FROM wishlist ORDER BY created_at DESC").all() as unknown as WishRow[]).map(toWish);
   const spending = () => {
@@ -203,6 +212,7 @@ export function createApp({ db, env }: { db: DB; env: Env }) {
       wallet,
       search: discover.search,
       skills: skills.active,
+      alerts: () => unreadAlerts(db),
       addToWallet: (offer, targetCents) => {
         const id = crypto.randomUUID();
         db.prepare(

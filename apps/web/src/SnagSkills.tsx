@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { SKILL_TEMPLATE } from "@snagwise/core";
 import { api, type SkillItem } from "./api";
+import { useI18n } from "./i18n";
 
 const MAX_FILE_BYTES = 20_000;
 
 // Community shopping know-how the user can add to their session. Tips are shown as plain text, never rendered as HTML.
 export function SnagSkills() {
+  const { t } = useI18n();
   const [skills, setSkills] = useState<SkillItem[]>([]);
   const [limit, setLimit] = useState(3);
   const [open, setOpen] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export function SnagSkills() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (file.size > MAX_FILE_BYTES) return setError("That file is too big for a skill (20 KB max).");
+    if (file.size > MAX_FILE_BYTES) return setError(t("skills.tooBig"));
     void file.text().then(setDraft);
   };
 
@@ -52,7 +54,7 @@ export function SnagSkills() {
     void run(async () => {
       await api.importSkill(draft);
       setDraft("");
-    }, "Imported. Turn it on to add it to your session.");
+    }, t("skills.imported"));
   };
 
   const templateUrl = `data:text/markdown;charset=utf-8,${encodeURIComponent(SKILL_TEMPLATE)}`;
@@ -60,11 +62,8 @@ export function SnagSkills() {
 
   return (
     <section aria-labelledby="skills-title">
-      <h2 id="skills-title">SnagSkills</h2>
-      <p className="hint">
-        Shopping know-how from people who know a category well: which stores tend to be worth it, what to check, what to skip. Turn on up to {limit}; the assistant
-        reads them as tips and Discover ranks deals with them. {activeCount} of {limit} on.
-      </p>
+      <h2 id="skills-title">{t("tab.skills")}</h2>
+      <p className="hint">{t("skills.intro", { limit, on: activeCount })}</p>
       {error && <p role="alert">{error}</p>}
       {note && <p className="hint">{note}</p>}
 
@@ -73,17 +72,17 @@ export function SnagSkills() {
           <li key={s.id} className="card">
             <div className="row spread">
               <strong>{s.name}</strong>
-              <span className={`badge ${s.origin === "imported" ? "warn" : ""}`}>{s.origin === "community" ? "Community · reviewed" : "Imported · unverified"}</span>
+              <span className={`badge ${s.origin === "imported" ? "warn" : ""}`}>{s.origin === "community" ? t("skills.community") : t("skills.importedBadge")}</span>
             </div>
             <p>{s.description}</p>
             <p className="hint small">
-              by {s.author} · v{s.version}
+              {t("skills.by", { author: s.author, version: s.version })}
               {s.categories.length > 0 && ` · ${s.categories.join(", ")}`}
             </p>
             {(s.preferStores.length > 0 || s.avoidStores.length > 0) && (
               <p className="hint small">
-                {s.preferStores.length > 0 && `Prefers: ${s.preferStores.join(", ")}. `}
-                {s.avoidStores.length > 0 && `Avoids: ${s.avoidStores.join(", ")}.`}
+                {s.preferStores.length > 0 && `${t("skills.prefers", { stores: s.preferStores.join(", ") })} `}
+                {s.avoidStores.length > 0 && t("skills.avoids", { stores: s.avoidStores.join(", ") })}
               </p>
             )}
             <div className="row">
@@ -92,14 +91,14 @@ export function SnagSkills() {
                 aria-pressed={s.active}
                 onClick={() => void run(() => api.setSkillActive(s.id, !s.active))}
               >
-                {s.active ? "On · turn off" : "Add to my session"}
+                {s.active ? t("skills.on") : t("skills.add")}
               </button>
               <button className="quiet" onClick={() => setOpen(open === s.id ? null : s.id)} aria-expanded={open === s.id}>
-                {open === s.id ? "Hide tips" : "Read tips"}
+                {open === s.id ? t("skills.hide") : t("skills.read")}
               </button>
               {s.origin === "imported" && (
-                <button className="quiet" onClick={() => void run(() => api.removeSkill(s.id), "Skill removed.")}>
-                  Remove
+                <button className="quiet" onClick={() => void run(() => api.removeSkill(s.id), t("skills.removed"))}>
+                  {t("common.remove")}
                 </button>
               )}
             </div>
@@ -109,26 +108,22 @@ export function SnagSkills() {
       </ul>
 
       <details>
-        <summary>Import or write a skill</summary>
-        <p className="hint">
-          Paste a skill's Markdown or open a .md file. Imported skills are unverified and only affect your app. Read them first: a skill is advice, it can't buy or change your budget.
-        </p>
+        <summary>{t("skills.importTitle")}</summary>
+        <p className="hint">{t("skills.importHint")}</p>
         <form onSubmit={submit} className="stack wide">
           <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={12} spellCheck={false} placeholder={SKILL_TEMPLATE} maxLength={MAX_FILE_BYTES} />
           <div className="row">
-            <button disabled={!draft.trim()}>Import</button>
+            <button disabled={!draft.trim()}>{t("skills.import")}</button>
             <label className="button quiet file">
-              Open .md file
+              {t("skills.openFile")}
               <input type="file" accept=".md,text/markdown,text/plain" onChange={onFile} />
             </label>
             <a className="button quiet" href={templateUrl} download="my-snagskill.md">
-              Start from the template
+              {t("skills.template")}
             </a>
           </div>
         </form>
-        <p className="hint small">
-          To share it with everyone, add your file to the <code>skills/</code> folder of the Snagwise repository in a pull request. Reviewed skills appear here for all users.
-        </p>
+        <p className="hint small">{t("skills.share")}</p>
       </details>
     </section>
   );

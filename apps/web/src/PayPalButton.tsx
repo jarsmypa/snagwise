@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type Budget, type Config } from "./api";
 import { loadPayPal } from "./paypal";
+import { useI18n } from "./i18n";
 
 // The PayPal checkout is the human approval step: nothing is paid until the user approves here.
 export function PayPalButton({ config, wishId, onPaid }: { config: Config; wishId: string; onPaid: (budget: Budget) => void }) {
+  const { t: translate } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const onPaidRef = useRef(onPaid);
+  // Latest translations without re-rendering the PayPal buttons when the language changes.
+  const tRef = useRef(translate);
+  tRef.current = translate;
+  const t: typeof translate = (key, vars) => tRef.current(key, vars);
   onPaidRef.current = onPaid;
 
   useEffect(() => {
@@ -25,9 +31,9 @@ export function PayPalButton({ config, wishId, onPaid }: { config: Config; wishI
           onApprove: async ({ orderID }) => {
             const result = await api.captureOrder(orderID, wishId);
             if (result.status === "COMPLETED") onPaidRef.current(result.budget);
-            else setError(`PayPal returned ${result.status}`);
+            else setError(t("paypal.status", { status: result.status }));
           },
-          onError: (err) => setError(err instanceof Error ? err.message : "PayPal could not complete the payment"),
+          onError: (err) => setError(err instanceof Error ? err.message : t("paypal.failed")),
         });
         return buttons.render(el);
       })
@@ -39,7 +45,7 @@ export function PayPalButton({ config, wishId, onPaid }: { config: Config; wishI
     };
   }, [config.paypalClientId, config.currency, wishId]);
 
-  if (!config.paypalClientId) return <p className="hint">Add PayPal sandbox credentials to enable checkout.</p>;
+  if (!config.paypalClientId) return <p className="hint">{t("paypal.missing")}</p>;
   return (
     <div>
       <div ref={ref} className="paypal" />

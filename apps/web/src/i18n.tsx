@@ -1,0 +1,534 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { storage } from "./api";
+
+/*
+  English for the judges, Spanish (voseo, Paraguay / Río de la Plata) for home. Picked from the
+  browser, switchable in the header, remembered per device. The AI already answers in the
+  user's language; this covers everything else.
+
+  Placeholders: {name}. Plurals: {n|one form|other form}.
+*/
+
+const en = {
+  "lang.switch": "ES",
+  "lang.switchLabel": "Ver en español",
+
+  "app.tagline": "Tell it what you like and what you can spend. It finds the deal, watches the price, and you approve every purchase in PayPal.",
+  "app.sections": "Sections",
+  "app.apiDown": "The server is not answering. Start it with npm start and reload.",
+  "tab.assistant": "Assistant",
+  "tab.discover": "Discover",
+  "tab.skills": "SnagSkills",
+  "tab.wallet": "Wallet",
+  "tab.spending": "Spending",
+
+  "band.left": "left to spend in {month} · of {total}",
+  "band.used": "Budget used",
+
+  "access.intro": "This demo is private. Enter the access code from the submission's testing instructions.",
+  "access.label": "Access code",
+  "access.enter": "Enter",
+
+  "common.remove": "Remove",
+  "common.cancel": "Cancel",
+  "common.close": "Close",
+  "common.loading": "Loading…",
+  "common.sampleCatalog": "Sample catalog · dev only",
+
+  "deal.atYourPrice": "At your price",
+  "deal.save": "save {amount}",
+
+  "verdict.buy": "At or below your target and within budget. Ready to buy.",
+  "verdict.above": "Still above your target price. Snagwise keeps watching.",
+  "verdict.over": "Good price, but it would push you over this month's budget.",
+  "verdict.currency": "Only offered in another currency.",
+
+  "wallet.intro": "What you are watching. Snagwise re-checks prices and only offers to buy at or under your target, within the budget.",
+  "wallet.checkAll": "Check all prices now",
+  "wallet.checkingAll": "Checking every price…",
+  "wallet.checkAllHit": "{n|1 item reached|{n} items reached} your price. See the bell.",
+  "wallet.checkAllNone": "Checked {n|1 item|{n} items}. Nothing at your price yet.",
+  "wallet.what": "What do you want?",
+  "wallet.whatPlaceholder": "noise cancelling headphones",
+  "wallet.target": "Target price ($)",
+  "wallet.targetShort": "target",
+  "wallet.watch": "Watch it",
+  "wallet.empty": "Nothing here yet. Save something from the Assistant or Discover, or type it above.",
+  "wallet.at": "at {store}:",
+  "wallet.notChecked": "Price not checked yet.",
+  "wallet.noOffers": "This product isn't listed right now. The last price is kept.",
+  "wallet.check": "Check price",
+  "wallet.checking": "Checking…",
+
+  "budget.title": "Monthly budget",
+  "budget.intro": "Snagwise never proposes a purchase that would go over it.",
+  "budget.label": "Budget for {month} ($)",
+  "budget.save": "Save budget",
+
+  "spending.empty": "No expenses this month yet.",
+  "spending.loading": "Loading table…",
+  "spending.purchases": "{n|1 purchase|{n} purchases} through Snagwise",
+  "spending.saved": "saved {amount} vs. list prices",
+
+  "footer.status": "Product search: {search} · Payments: {pay} · AI answers can be wrong; you approve every purchase.",
+  "footer.searchLive": "Channel3 (live catalog)",
+  "footer.searchSample": "sample catalog (dev only)",
+  "footer.payOn": "PayPal sandbox",
+  "footer.payOff": "PayPal not set up",
+
+  "assistant.aiNote": "Answers come from AI models and can be wrong. Prices come from live store listings, and nothing is bought until you approve it in PayPal.",
+  "assistant.usingSkills": "Using SnagSkills: {names}.",
+  "assistant.noProvider": "No free AI provider is set up on this server. Connect your own key below.",
+  "assistant.settings": "AI settings",
+  "assistant.settingsConnected": "AI settings · your key is connected",
+  "assistant.ai": "AI",
+  "assistant.auto": "Auto · rotate when one hits its limit",
+  "assistant.yourKey": "Your key · {name}",
+  "assistant.free": "{name} · free",
+  "assistant.backup": "The others stay as backup and pick up from the shared context file.",
+  "assistant.tryIntro": "Ask in your own words, in any language. For example:",
+  "assistant.s1": "What's left in my budget this month?",
+  "assistant.s2": "Find wireless earbuds under $80 that match my taste",
+  "assistant.s3": "Is anything in my wallet at my target price right now?",
+  "assistant.s4": "A gift under $50 for someone who loves coffee",
+  "assistant.paid": "Paid in the PayPal sandbox.",
+  "assistant.answeredBy": "AI answer · {name}",
+  "assistant.busy": "Checking products, prices and your budget…",
+  "assistant.message": "Message",
+  "assistant.placeholder": "Ask Snagwise…",
+  "assistant.send": "Send",
+  "assistant.contextFile": "Context file shared between AI models (.md)",
+  "handoff.text": "{from} stopped ({reason}). {to} took over from the context file.",
+  "handoff.limit": "usage limit reached",
+  "handoff.error": "provider error",
+
+  "byok.title": "Use your own AI key",
+  "byok.connectedTitle": "Your AI key (connected)",
+  "byok.privacy": "Your key is sent only with your messages, used for that request, and never stored or logged on the server. Usage is billed to your account with that provider.",
+  "byok.provider": "Provider",
+  "byok.key": "API key",
+  "byok.connectedPlaceholder": "•••••••• (connected)",
+  "byok.model": "Model (optional)",
+  "byok.modelPlaceholder": "Leave empty for the default",
+  "byok.remember": "Remember on this device",
+  "byok.connect": "Connect",
+  "byok.disconnect": "Disconnect",
+  "byok.hintClaude": "defaults to claude-opus-5-5",
+  "byok.hintFree": "free tier available",
+  "byok.hintOpenRouter": "set a model ending in :free",
+
+  "discover.modes": "Ways to teach Snagwise",
+  "discover.swipeMode": "Swipe deals",
+  "discover.playMode": "Play money",
+
+  "swipe.intro": "Swipe right on what you like, left on what you don't. Snagwise learns from every answer.",
+  "swipe.learning": "Learning from {n|1 signal|{n} signals}",
+  "swipe.learningInto": "Learning from {n|1 signal|{n} signals} · into {top}",
+  "swipe.loading": "Loading more deals…",
+  "swipe.deal": "Deal",
+  "swipe.stampYes": "Like",
+  "swipe.stampNo": "Nope",
+  "swipe.nope": "Nope",
+  "swipe.nopeLabel": "Not for me",
+  "swipe.like": "Like",
+  "swipe.likeLabel": "I like it",
+  "swipe.why": "What did you like?",
+  "swipe.product": "The product",
+  "swipe.price": "The price",
+  "swipe.both": "Both",
+  "swipe.noted": "Noted. What next?",
+  "swipe.saveWallet": "Save to wallet",
+  "swipe.recommend": "Recommend",
+  "swipe.next": "Next deal",
+  "swipe.saved": "Saved. Snagwise will watch for {amount} or less.",
+
+  "play.lede": "Shop as if you had the money. Real products, pretend money.",
+  "play.rules": "Nothing is charged and nothing leaves the app. What you pick teaches Snagwise your taste, and anything you still want later can go to your real wallet.",
+  "play.amountLabel": "Play money",
+  "play.ifIHad": "If I had {amount}",
+  "play.opening": "Opening the store…",
+  "play.left": "of play money left",
+  "play.inCart": "{n|1 item|{n} items} in the cart",
+  "play.checkout": "Check out (play money)",
+  "play.add": "Add",
+  "play.added": "In the cart",
+  "play.tooMuch": "More than your play money left",
+  "play.tooMuchShort": "Over",
+  "play.changeAmount": "Change the amount",
+  "play.youWouldSpend": "You would spend",
+  "play.of": "of {amount}.",
+  "play.months": "That's {n} months of your real budget.",
+  "play.monthShare": "That's {pct}% of your real monthly budget.",
+  "play.learned": "Snagwise now knows you lean toward {top}.",
+  "play.forReal": "Still want any of it tomorrow?",
+  "play.forRealHint": "Watch it for real: Snagwise waits for a better price than this one and checks it against your budget.",
+  "play.wantIt": "I want it for real",
+  "play.watching": "Watching for {amount} or less",
+  "play.again": "Play again",
+  "play.style.deal_hunter": "Deal hunter.",
+  "play.style.deal_hunter.text": "Most of what you picked was on sale.",
+  "play.style.big_ticket": "One big wish.",
+  "play.style.big_ticket.text": "Half your cart went to a single item.",
+  "play.style.spread_out": "A bit of everything.",
+  "play.style.spread_out.text": "You shopped across four or more categories.",
+  "play.style.saver": "Saver.",
+  "play.style.saver.text": "You left more than half the money unspent.",
+  "play.style.all_in": "All in.",
+  "play.style.all_in.text": "You used almost all of it.",
+
+  "skills.intro": "Shopping know-how from people who know a category well: which stores tend to be worth it, what to check, what to skip. Turn on up to {limit}; the assistant reads them as tips and Discover ranks deals with them. {on} of {limit} on.",
+  "skills.community": "Community · reviewed",
+  "skills.importedBadge": "Imported · unverified",
+  "skills.by": "by {author} · v{version}",
+  "skills.prefers": "Prefers: {stores}.",
+  "skills.avoids": "Avoids: {stores}.",
+  "skills.on": "On · turn off",
+  "skills.add": "Add to my session",
+  "skills.read": "Read tips",
+  "skills.hide": "Hide tips",
+  "skills.removed": "Skill removed.",
+  "skills.imported": "Imported. Turn it on to add it to your session.",
+  "skills.tooBig": "That file is too big for a skill (20 KB max).",
+  "skills.importTitle": "Import or write a skill",
+  "skills.importHint": "Paste a skill's Markdown or open a .md file. Imported skills are unverified and only affect your app. Read them first: a skill is advice, it can't buy or change your budget.",
+  "skills.import": "Import",
+  "skills.openFile": "Open .md file",
+  "skills.template": "Start from the template",
+  "skills.share": "To share it with everyone, add your file to the skills/ folder of the Snagwise repository in a pull request. Reviewed skills appear here for all users.",
+
+  "card.title": "Recommend this deal",
+  "card.creating": "Creating your card…",
+  "card.alt": "Story card for {title} with a QR code",
+  "card.share": "Share",
+  "card.download": "Download",
+  "card.copy": "Copy link",
+  "card.copied": "Link copied",
+  "card.imageFailed": "Could not create the image",
+  "card.pick": "Snagwise pick",
+  "card.scan1": "Scan to grab",
+  "card.scan2": "this deal",
+  "card.priceOn": "Price on {date}. May change.",
+
+  "share.from": "A friend recommended this with Snagwise",
+  "share.missing": "This deal link does not exist or has expired.",
+  "share.priceWhen": "Price when shared, on {date}. It may have changed.",
+  "share.save": "Save to my wallet",
+  "share.saved": "Saved to your wallet",
+  "share.open": "Open the deal",
+  "share.openApp": "Open Snagwise",
+  "share.openAppRest": "to watch the price and buy within your budget.",
+
+  "paypal.status": "PayPal returned {status}",
+  "paypal.failed": "PayPal could not complete the payment",
+  "paypal.missing": "Add PayPal sandbox credentials to enable checkout.",
+
+  "grid.date": "Date",
+  "grid.merchant": "Merchant",
+  "grid.category": "Category",
+  "grid.amount": "Amount",
+
+  "alerts.title": "Price alerts",
+  "alerts.labelNew": "Price alerts, {n} new",
+  "alerts.empty": "Nothing yet. When something in your wallet reaches your target price, it shows up here.",
+  "alerts.openWallet": "Open wallet",
+  "alerts.notifyMe": "Notify me in this browser",
+  "alerts.notifyTitle": "{title} hit your price",
+  "alerts.notifyBody": "{price} at {store} (target {target})",
+};
+
+export type Key = keyof typeof en;
+
+const es: Record<Key, string> = {
+  "lang.switch": "EN",
+  "lang.switchLabel": "View in English",
+
+  "app.tagline": "Contale qué te gusta y cuánto podés gastar. Busca la oferta, vigila el precio y vos aprobás cada compra en PayPal.",
+  "app.sections": "Secciones",
+  "app.apiDown": "El servidor no responde. Arrancalo con npm start y recargá la página.",
+  "tab.assistant": "Asistente",
+  "tab.discover": "Descubrir",
+  "tab.skills": "SnagSkills",
+  "tab.wallet": "Cartera",
+  "tab.spending": "Gastos",
+
+  "band.left": "te quedan para gastar en {month} · de {total}",
+  "band.used": "Presupuesto usado",
+
+  "access.intro": "Esta demo es privada. Ingresá el código de acceso de las instrucciones de prueba.",
+  "access.label": "Código de acceso",
+  "access.enter": "Entrar",
+
+  "common.remove": "Quitar",
+  "common.cancel": "Cancelar",
+  "common.close": "Cerrar",
+  "common.loading": "Cargando…",
+  "common.sampleCatalog": "Catálogo de ejemplo · solo desarrollo",
+
+  "deal.atYourPrice": "A tu precio",
+  "deal.save": "ahorrás {amount}",
+
+  "verdict.buy": "Está en tu precio objetivo o menos, y entra en el presupuesto. Lista para comprar.",
+  "verdict.above": "Sigue arriba de tu precio objetivo. Snagwise la sigue vigilando.",
+  "verdict.over": "Buen precio, pero te pasarías del presupuesto de este mes.",
+  "verdict.currency": "Solo está en otra moneda.",
+
+  "wallet.intro": "Lo que estás vigilando. Snagwise revisa los precios y solo te propone comprar en tu precio objetivo o menos, dentro del presupuesto.",
+  "wallet.checkAll": "Revisar todos los precios ahora",
+  "wallet.checkingAll": "Revisando cada precio…",
+  "wallet.checkAllHit": "{n|1 producto llegó|{n} productos llegaron} a tu precio. Mirá la campana.",
+  "wallet.checkAllNone": "Revisé {n|1 producto|{n} productos}. Ninguno está a tu precio todavía.",
+  "wallet.what": "¿Qué querés?",
+  "wallet.whatPlaceholder": "auriculares con cancelación de ruido",
+  "wallet.target": "Precio objetivo (US$)",
+  "wallet.targetShort": "objetivo",
+  "wallet.watch": "Vigilar",
+  "wallet.empty": "Todavía no hay nada. Guardá algo desde el Asistente o Descubrir, o escribilo arriba.",
+  "wallet.at": "en {store}:",
+  "wallet.notChecked": "Precio sin revisar todavía.",
+  "wallet.noOffers": "Este producto no aparece publicado ahora. Se mantiene el último precio.",
+  "wallet.check": "Revisar precio",
+  "wallet.checking": "Revisando…",
+
+  "budget.title": "Presupuesto mensual",
+  "budget.intro": "Snagwise nunca te propone una compra que lo supere.",
+  "budget.label": "Presupuesto de {month} (US$)",
+  "budget.save": "Guardar presupuesto",
+
+  "spending.empty": "Todavía no hay gastos este mes.",
+  "spending.loading": "Cargando la tabla…",
+  "spending.purchases": "{n|1 compra|{n} compras} con Snagwise",
+  "spending.saved": "ahorraste {amount} contra el precio de lista",
+
+  "footer.status": "Búsqueda de productos: {search} · Pagos: {pay} · Las respuestas de la IA pueden equivocarse; vos aprobás cada compra.",
+  "footer.searchLive": "Channel3 (catálogo real)",
+  "footer.searchSample": "catálogo de ejemplo (solo desarrollo)",
+  "footer.payOn": "PayPal sandbox",
+  "footer.payOff": "PayPal sin configurar",
+
+  "assistant.aiNote": "Las respuestas vienen de modelos de IA y pueden equivocarse. Los precios salen de publicaciones reales de las tiendas, y nada se compra hasta que lo aprobás en PayPal.",
+  "assistant.usingSkills": "Usando SnagSkills: {names}.",
+  "assistant.noProvider": "Este servidor no tiene ninguna IA gratuita configurada. Conectá tu propia clave más abajo.",
+  "assistant.settings": "Ajustes de IA",
+  "assistant.settingsConnected": "Ajustes de IA · tu clave está conectada",
+  "assistant.ai": "IA",
+  "assistant.auto": "Automática · cambia cuando una llega a su límite",
+  "assistant.yourKey": "Tu clave · {name}",
+  "assistant.free": "{name} · gratis",
+  "assistant.backup": "Las demás quedan de respaldo y siguen desde el archivo de contexto compartido.",
+  "assistant.tryIntro": "Preguntá con tus palabras, en el idioma que quieras. Por ejemplo:",
+  "assistant.s1": "¿Cuánto me queda del presupuesto este mes?",
+  "assistant.s2": "Buscame auriculares inalámbricos de menos de US$80 que vayan con mis gustos",
+  "assistant.s3": "¿Hay algo de mi cartera a mi precio objetivo ahora?",
+  "assistant.s4": "Un regalo de menos de US$50 para alguien que ama el café",
+  "assistant.paid": "Pagado en el sandbox de PayPal.",
+  "assistant.answeredBy": "Respuesta de IA · {name}",
+  "assistant.busy": "Revisando productos, precios y tu presupuesto…",
+  "assistant.message": "Mensaje",
+  "assistant.placeholder": "Preguntale a Snagwise…",
+  "assistant.send": "Enviar",
+  "assistant.contextFile": "Archivo de contexto compartido entre las IA (.md)",
+  "handoff.text": "{from} se detuvo ({reason}). {to} siguió desde el archivo de contexto.",
+  "handoff.limit": "llegó a su límite de uso",
+  "handoff.error": "error del proveedor",
+
+  "byok.title": "Usar tu propia clave de IA",
+  "byok.connectedTitle": "Tu clave de IA (conectada)",
+  "byok.privacy": "Tu clave viaja solo con tus mensajes, se usa para ese pedido y el servidor nunca la guarda ni la registra. El uso se cobra en tu cuenta de ese proveedor.",
+  "byok.provider": "Proveedor",
+  "byok.key": "Clave de API",
+  "byok.connectedPlaceholder": "•••••••• (conectada)",
+  "byok.model": "Modelo (opcional)",
+  "byok.modelPlaceholder": "Dejalo vacío para usar el de siempre",
+  "byok.remember": "Recordar en este dispositivo",
+  "byok.connect": "Conectar",
+  "byok.disconnect": "Desconectar",
+  "byok.hintClaude": "usa claude-opus-5-5 por defecto",
+  "byok.hintFree": "tiene plan gratuito",
+  "byok.hintOpenRouter": "elegí un modelo que termine en :free",
+
+  "discover.modes": "Formas de enseñarle a Snagwise",
+  "discover.swipeMode": "Deslizar ofertas",
+  "discover.playMode": "Plata de juguete",
+
+  "swipe.intro": "Deslizá a la derecha lo que te gusta y a la izquierda lo que no. Snagwise aprende de cada respuesta.",
+  "swipe.learning": "Aprendiendo de {n|1 señal|{n} señales}",
+  "swipe.learningInto": "Aprendiendo de {n|1 señal|{n} señales} · te gusta {top}",
+  "swipe.loading": "Cargando más ofertas…",
+  "swipe.deal": "Oferta",
+  "swipe.stampYes": "Me gusta",
+  "swipe.stampNo": "Paso",
+  "swipe.nope": "Paso",
+  "swipe.nopeLabel": "No es para mí",
+  "swipe.like": "Me gusta",
+  "swipe.likeLabel": "Me gusta",
+  "swipe.why": "¿Qué te gustó?",
+  "swipe.product": "El producto",
+  "swipe.price": "El precio",
+  "swipe.both": "Las dos cosas",
+  "swipe.noted": "Anotado. ¿Y ahora?",
+  "swipe.saveWallet": "Guardar en la cartera",
+  "swipe.recommend": "Recomendar",
+  "swipe.next": "Siguiente oferta",
+  "swipe.saved": "Guardado. Snagwise va a esperar que baje a {amount} o menos.",
+
+  "play.lede": "Comprá como si tuvieras la plata. Productos reales, plata de juguete.",
+  "play.rules": "No se cobra nada y nada sale de la app. Lo que elijas le enseña a Snagwise tus gustos, y lo que todavía quieras después puede ir a tu cartera de verdad.",
+  "play.amountLabel": "Plata de juguete",
+  "play.ifIHad": "Si tuviera {amount}",
+  "play.opening": "Abriendo la tienda…",
+  "play.left": "de plata de juguete te quedan",
+  "play.inCart": "{n|1 producto|{n} productos} en el carrito",
+  "play.checkout": "Pagar (con plata de juguete)",
+  "play.add": "Agregar",
+  "play.added": "En el carrito",
+  "play.tooMuch": "Cuesta más de lo que te queda",
+  "play.tooMuchShort": "No alcanza",
+  "play.changeAmount": "Cambiar el monto",
+  "play.youWouldSpend": "Gastarías",
+  "play.of": "de {amount}.",
+  "play.months": "Son {n} meses de tu presupuesto real.",
+  "play.monthShare": "Es el {pct}% de tu presupuesto real del mes.",
+  "play.learned": "Snagwise ahora sabe que te tiran {top}.",
+  "play.forReal": "¿Mañana todavía querrías algo de esto?",
+  "play.forRealHint": "Vigilalo de verdad: Snagwise espera un precio mejor que este y lo compara con tu presupuesto.",
+  "play.wantIt": "Lo quiero de verdad",
+  "play.watching": "Esperando que baje a {amount} o menos",
+  "play.again": "Jugar otra vez",
+  "play.style.deal_hunter": "Cazador de ofertas.",
+  "play.style.deal_hunter.text": "Casi todo lo que elegiste estaba rebajado.",
+  "play.style.big_ticket": "Un gran antojo.",
+  "play.style.big_ticket.text": "La mitad del carrito se fue en una sola cosa.",
+  "play.style.spread_out": "Un poco de todo.",
+  "play.style.spread_out.text": "Compraste en cuatro categorías o más.",
+  "play.style.saver": "Ahorrador.",
+  "play.style.saver.text": "Te sobró más de la mitad de la plata.",
+  "play.style.all_in": "A fondo.",
+  "play.style.all_in.text": "Usaste casi toda la plata.",
+
+  "skills.intro": "Saberes de compra de gente que conoce bien un rubro: qué tiendas suelen convenir, qué revisar, qué evitar. Activá hasta {limit}; el asistente las lee como consejos y Descubrir ordena las ofertas con ellas. Activas: {on} de {limit}.",
+  "skills.community": "Comunidad · revisada",
+  "skills.importedBadge": "Importada · sin verificar",
+  "skills.by": "por {author} · v{version}",
+  "skills.prefers": "Prefiere: {stores}.",
+  "skills.avoids": "Evita: {stores}.",
+  "skills.on": "Activa · desactivar",
+  "skills.add": "Sumar a mi sesión",
+  "skills.read": "Leer consejos",
+  "skills.hide": "Ocultar consejos",
+  "skills.removed": "Skill quitada.",
+  "skills.imported": "Importada. Activala para sumarla a tu sesión.",
+  "skills.tooBig": "Ese archivo es muy grande para una skill (máximo 20 KB).",
+  "skills.importTitle": "Importar o escribir una skill",
+  "skills.importHint": "Pegá el Markdown de una skill o abrí un archivo .md. Las importadas no están verificadas y solo afectan tu app. Leela antes: una skill es un consejo, no puede comprar ni cambiar tu presupuesto.",
+  "skills.import": "Importar",
+  "skills.openFile": "Abrir archivo .md",
+  "skills.template": "Empezar desde la plantilla",
+  "skills.share": "Para compartirla con todos, sumá tu archivo a la carpeta skills/ del repositorio de Snagwise con un pull request. Las skills revisadas aparecen acá para todos.",
+
+  "card.title": "Recomendar esta oferta",
+  "card.creating": "Armando tu tarjeta…",
+  "card.alt": "Tarjeta para historias de {title} con un código QR",
+  "card.share": "Compartir",
+  "card.download": "Descargar",
+  "card.copy": "Copiar enlace",
+  "card.copied": "Enlace copiado",
+  "card.imageFailed": "No se pudo crear la imagen",
+  "card.pick": "Elegido con Snagwise",
+  "card.scan1": "Escaneá para",
+  "card.scan2": "ver la oferta",
+  "card.priceOn": "Precio del {date}. Puede cambiar.",
+
+  "share.from": "Te lo recomendaron con Snagwise",
+  "share.missing": "Este enlace no existe o ya venció.",
+  "share.priceWhen": "Precio al compartirlo, el {date}. Puede haber cambiado.",
+  "share.save": "Guardar en mi cartera",
+  "share.saved": "Guardado en tu cartera",
+  "share.open": "Ver la oferta",
+  "share.openApp": "Abrí Snagwise",
+  "share.openAppRest": "para vigilar el precio y comprar dentro de tu presupuesto.",
+
+  "paypal.status": "PayPal respondió {status}",
+  "paypal.failed": "PayPal no pudo completar el pago",
+  "paypal.missing": "Cargá las credenciales del sandbox de PayPal para habilitar el pago.",
+
+  "grid.date": "Fecha",
+  "grid.merchant": "Comercio",
+  "grid.category": "Categoría",
+  "grid.amount": "Monto",
+
+  "alerts.title": "Avisos de precio",
+  "alerts.labelNew": "Avisos de precio, {n} nuevos",
+  "alerts.empty": "Nada todavía. Cuando algo de tu cartera llegue a tu precio objetivo, aparece acá.",
+  "alerts.openWallet": "Abrir la cartera",
+  "alerts.notifyMe": "Avisarme en este navegador",
+  "alerts.notifyTitle": "{title} llegó a tu precio",
+  "alerts.notifyBody": "{price} en {store} (objetivo {target})",
+};
+
+export type Lang = "en" | "es";
+type Vars = Record<string, string | number>;
+export type TFunction = (key: Key, vars?: Vars) => string;
+
+const DICTS: Record<Lang, Record<Key, string>> = { en, es };
+const LANG_KEY = "snagwise.lang";
+
+// A plural form may itself contain placeholders: {n|1 item|{n} items}.
+const FORM = String.raw`[^|{}]*(?:\{\w+\}[^|{}]*)*`;
+const PLURAL = new RegExp(String.raw`\{(\w+)\|(${FORM})\|(${FORM})\}`, "g");
+
+export function format(template: string, vars: Vars = {}): string {
+  return template
+    .replace(PLURAL, (_, name: string, one: string, other: string) => (Number(vars[name]) === 1 ? one : other))
+    .replace(/\{(\w+)\}/g, (match, name: string) => (name in vars ? String(vars[name]) : match));
+}
+
+function initialLang(): Lang {
+  const saved = storage.get(LANG_KEY);
+  if (saved === "en" || saved === "es") return saved;
+  return typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("es") ? "es" : "en";
+}
+
+interface I18n {
+  lang: Lang;
+  locale: string;
+  t: TFunction;
+  setLang: (lang: Lang) => void;
+}
+
+const I18nContext = createContext<I18n | null>(null);
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(initialLang);
+
+  const setLang = useCallback((next: Lang) => {
+    setLangState(next);
+    storage.set(LANG_KEY, next);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = lang === "es" ? "es-PY" : "en";
+  }, [lang]);
+
+  const value = useMemo<I18n>(() => {
+    const dict = DICTS[lang];
+    // Spanish screens keep US-style money (the prices are in US dollars) but dates in Spanish.
+    return { lang, locale: lang === "es" ? "es-PY" : "en-US", setLang, t: (key, vars) => format(dict[key], vars) };
+  }, [lang, setLang]);
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}
+
+export function useI18n(): I18n {
+  const ctx = useContext(I18nContext);
+  if (!ctx) throw new Error("useI18n must be used inside I18nProvider");
+  return ctx;
+}
+
+export function LangSwitch({ light = false }: { light?: boolean }) {
+  const { lang, setLang, t } = useI18n();
+  return (
+    <button className={`lang-switch${light ? " light" : ""}`} onClick={() => setLang(lang === "en" ? "es" : "en")} aria-label={t("lang.switchLabel")} title={t("lang.switchLabel")}>
+      {t("lang.switch")}
+    </button>
+  );
+}

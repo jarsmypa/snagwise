@@ -10,6 +10,9 @@ Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/). Eve
 |---|---|
 | **Assistant** | Chat with the agent: "find wireless earbuds under $80 that match my taste". It searches real products, saves them to your wallet and proposes purchases that fit your budget. |
 | **Discover** | Swipe deals. Say *what* you liked — the product, the price, or both — and Snagwise learns your taste and your price comfort per category. |
+| **Play money** | A store with real products and pretend money ("if I had $5,000…"). It scratches the shopping itch without spending, shows your shopping style, teaches your taste profile, and anything you still want goes to your real wallet with a target price. |
+| **Price alerts** | A bell (and optional browser notification) when something in your wallet reaches your target price. |
+| **English / Spanish** | The whole app switches language; the AI already answers in yours. |
 | **Recommend** | Turn a deal you like into a 9:16 story card with a QR code. Friends who scan it can save the deal; every scan and save teaches your profile. |
 | **SnagSkills** | Add shopping know-how from the community to your session: gamers, runners, coffee lovers… The agent reads them as tips and Discover ranks deals with them. |
 | **Wallet** | Items you are watching, with a target price. A background price watch re-checks them. |

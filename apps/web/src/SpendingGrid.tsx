@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { CellStyleModule, ClientSideRowModelModule, ModuleRegistry, TextFilterModule, themeQuartz, type ColDef, type ValueFormatterParams } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import { formatMoney, type Transaction } from "@snagwise/core";
+import { useI18n } from "./i18n";
 
 // Only the modules this table uses, to keep the bundle small.
 ModuleRegistry.registerModules([ClientSideRowModelModule, TextFilterModule, CellStyleModule]);
@@ -21,14 +22,15 @@ const money = (p: ValueFormatterParams<Transaction, number>) => (p.value == null
 
 // Sortable, filterable spending table (AG Grid Community). Groups by category through the filter.
 export function SpendingGrid({ rows }: { rows: Transaction[] }) {
+  const { t } = useI18n();
   const columns = useMemo<ColDef<Transaction>[]>(
     () => [
-      { field: "date", headerName: "Date", valueFormatter: (p) => (p.value ? String(p.value).slice(0, 10) : ""), sort: "desc", width: 120 },
-      { field: "merchant", headerName: "Merchant", flex: 1, minWidth: 140, filter: true },
-      { field: "category", headerName: "Category", width: 150, filter: true },
-      { field: "amountCents", headerName: "Amount", valueFormatter: money, type: "rightAligned", width: 120, cellStyle: { fontFamily: "var(--font-num)" } },
+      { field: "date", headerName: t("grid.date"), valueFormatter: (p) => (p.value ? String(p.value).slice(0, 10) : ""), sort: "desc", width: 120 },
+      { field: "merchant", headerName: t("grid.merchant"), flex: 1, minWidth: 140, filter: true },
+      { field: "category", headerName: t("grid.category"), width: 150, filter: true },
+      { field: "amountCents", headerName: t("grid.amount"), valueFormatter: money, type: "rightAligned", width: 120, cellStyle: { fontFamily: "var(--font-num)" } },
     ],
-    [],
+    [t],
   );
 
   return (

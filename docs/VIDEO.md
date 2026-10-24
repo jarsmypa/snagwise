@@ -14,11 +14,14 @@ Grabar en Chrome a 1280×720 o más, con el zoom del navegador en 110 % para que
 
 ## Escenas
 
+Con las escenas nuevas (plata de juguete y avisos) el total pasa de 3 minutos: al editar, acortar las escenas de SnagSkills y del archivo de contexto, o mostrar la campana de avisos en lugar de la escena de Spending.
+
 | Tiempo | Pantalla | Narración (inglés) |
 |---|---|---|
 | 0:00–0:15 | Pestaña Assistant, banda verde con el presupuesto | "Deal hunting is noisy, and budgets only show up after the money is gone. Snagwise is a shopping agent that knows what you like and what you can spend." |
 | 0:15–0:40 | Discover: deslizar 3 tarjetas, en una elegir "The product" | "It learns your taste from swipes. I can say *what* I liked: the product, or the price. 'Love the product, not the price' tells Snagwise to wait for a lower one." |
 | 0:40–0:55 | Tocar Recommend: tarjeta 9:16 con QR | "Any deal becomes a story card. When friends scan it and save the deal, my taste profile learns from that too." |
+| 0:55–1:10 | Discover → Play money: "If I had $5,000", llenar el carrito, pagar con plata de juguete, ver el resultado y tocar "I want it for real" | "And there's that itch: 'if I had the money…'. Play money lets me shop real products with pretend money. It shows my style, learns from it, and anything I still want goes to my real wallet to wait for a better price." |
 | 0:55–1:10 | SnagSkills: abrir Gamer Deals, "Read tips", activarla | "SnagSkills are shopping know-how from the community, like a gamer's tips on where game prices really drop. The agent reads them as advice, never as instructions." |
 | 1:10–1:50 | Assistant: "Find a gaming headset under $80 that fits my taste and save the best one with a $70 target" → luego "If it fits my budget, propose buying it" | "Now I just ask. It searches live products, ranks them with my taste and the skill, saves one to my wallet, and only proposes a purchase if the price hits my target and fits this month's budget." |
 | 1:50–2:15 | Botón de PayPal en la propuesta → pagar con la cuenta sandbox | "Nothing is bought until I approve it in PayPal. The server checks the target and the budget again before creating the order." |

@@ -74,6 +74,24 @@ const MIGRATIONS: string[] = [
   `
   UPDATE transactions SET category = 'snagwise purchase' WHERE source = 'paypal' AND category = 'wishlist';
   `,
+  `
+  CREATE TABLE alerts (
+    id TEXT PRIMARY KEY,
+    wish_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    store TEXT NOT NULL,
+    price_cents INTEGER NOT NULL,
+    target_cents INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    read_at TEXT
+  );
+  CREATE TABLE play_runs (
+    id TEXT PRIMARY KEY,
+    budget_cents INTEGER NOT NULL,
+    items TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  `,
 ];
 
 export function openDb(path: string): DB {

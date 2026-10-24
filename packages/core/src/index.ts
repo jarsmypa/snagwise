@@ -89,6 +89,13 @@ export function trackOffer(saved: Offer | null, offers: readonly Offer[], curren
   );
 }
 
+// Alert when a watched item reaches the target, or keeps dropping once there. Never twice for the same price.
+export function shouldAlert(previous: Offer | null, next: Offer, targetCents: number): boolean {
+  if (next.priceCents > targetCents) return false;
+  if (!previous) return true;
+  return previous.priceCents > targetCents || next.priceCents < previous.priceCents;
+}
+
 export function toCents(amount: number): number {
   return Math.round(amount * 100);
 }
@@ -105,3 +112,4 @@ export function formatMoney(cents: number): string {
 
 export * from "./taste.js";
 export * from "./skills.js";
+export * from "./play.js";

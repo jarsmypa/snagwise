@@ -56,7 +56,9 @@ const WATCH_HOURS = Number(process.env.SNAGWISE_PRICE_WATCH_HOURS ?? 6);
 if (env.channel3Key && WATCH_HOURS > 0) {
   const key = env.channel3Key;
   setInterval(() => {
-    void refreshWalletPrices(db, (q) => searchProducts(key, q, 10)).then((n) => console.log(`Price watch: ${n} wallet items refreshed`));
+    void refreshWalletPrices(db, (q) => searchProducts(key, q, 10)).then((r) =>
+      console.log(`Price watch: ${r.updated} wallet items refreshed, ${r.alerts} new alerts`),
+    );
   }, WATCH_HOURS * 60 * 60_000).unref();
 }
 // Render's free disk is wiped on every deploy, so the hosted demo re-seeds itself on boot.

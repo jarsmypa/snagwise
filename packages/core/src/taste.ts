@@ -17,7 +17,7 @@ export interface Reaction {
   priceCents: number;
   liked: boolean;
   reasons: Reason[]; // empty when liked is false
-  source: "swipe" | "referral";
+  source: "swipe" | "referral" | "game"; // game = picked in the play-money store
 }
 
 export interface ShareStat {
@@ -39,6 +39,7 @@ const WEIGHT = {
   likedOnlyPrice: 0.5,
   nope: -1,
   referralSave: 3, // acting on a friend's recommendation is a stronger signal than a swipe
+  playPick: 1, // play money: real taste, inflated spending, so it counts less and never moves price ceilings
   shareOpen: 0.25,
   shareSave: 1,
 };
@@ -58,6 +59,14 @@ export function buildProfile(reactions: readonly Reaction[], shares: readonly Sh
     profile.signals++;
     const product = r.reasons.includes("product");
     const price = r.reasons.includes("price");
+
+    if (r.source === "game") {
+      if (r.liked) {
+        bump(profile.categories, r.category, WEIGHT.playPick);
+        bump(profile.brands, r.brand, WEIGHT.playPick);
+      }
+      continue;
+    }
 
     if (!r.liked) {
       bump(profile.categories, r.category, WEIGHT.nope);

@@ -15,6 +15,7 @@ export interface AgentDeps {
   search(query: string): Promise<Offer[]>;
   addToWallet(offer: Offer, targetCents: number): string; // returns the new wallet item id
   skills(): { skill: Skill; origin: "community" | "imported" }[]; // active SnagSkills
+  alerts(): { title: string; store: string; priceCents: number; targetCents: number }[]; // unread price alerts
 }
 
 export interface Proposal {

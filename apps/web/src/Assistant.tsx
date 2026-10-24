@@ -2,23 +2,25 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { formatMoney } from "@snagwise/core";
 import { api, ApiError, storage, type AgentReply, type Byok, type Config } from "./api";
 import { PayPalButton } from "./PayPalButton";
+import { useI18n, type Key } from "./i18n";
 
 type Message = { role: "user"; text: string } | ({ role: "assistant" } & Omit<AgentReply, "conversationId" | "walletChanged">);
 
-const PROVIDERS: { id: Byok["provider"]; label: string; hint: string }[] = [
-  { id: "anthropic", label: "Claude (Anthropic)", hint: "Defaults to claude-opus-5-5" },
-  { id: "gemini", label: "Gemini (Google AI Studio)", hint: "Free tier available" },
-  { id: "groq", label: "Groq", hint: "Free tier available" },
-  { id: "openrouter", label: "OpenRouter", hint: "Set a model, e.g. one ending in :free" },
+const PROVIDERS: { id: Byok["provider"]; label: string; hint: Key }[] = [
+  { id: "anthropic", label: "Claude (Anthropic)", hint: "byok.hintClaude" },
+  { id: "gemini", label: "Gemini (Google AI Studio)", hint: "byok.hintFree" },
+  { id: "groq", label: "Groq", hint: "byok.hintFree" },
+  { id: "openrouter", label: "OpenRouter", hint: "byok.hintOpenRouter" },
 ];
 
 // First-run prompts: each one exercises a different tool (budget, taste + search, wallet + purchase rules).
-const SUGGESTIONS = [
-  "What's left in my budget this month?",
-  "Find wireless earbuds under $80 that match my taste",
-  "Is anything in my wallet at my target price right now?",
-  "A gift under $50 for someone who loves coffee",
-];
+const SUGGESTIONS: Key[] = ["assistant.s1", "assistant.s2", "assistant.s3", "assistant.s4"];
+
+// Server reasons for a handoff, in the user's language.
+const HANDOFF_REASON: Record<string, Key> = {
+  "usage limit reached": "handoff.limit",
+  "provider error": "handoff.error",
+};
 
 const BYOK_KEY = "snagwise.byok";
 const AI_CHOICE_KEY = "snagwise.ai";
@@ -50,6 +52,7 @@ function loadByok(): Byok | null {
 
 // Chat with the agent. Free AI providers rotate behind the scenes; the user can also bring their own key.
 export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: Config | null; onWalletChange: () => void; onAccessNeeded: () => void }) {
+  const { t } = useI18n();
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -60,11 +63,10 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
   const [choice, setChoice] = useState(() => storage.get(AI_CHOICE_KEY) ?? AUTO);
   const [contextMd, setContextMd] = useState<string | null>(null);
   const [paid, setPaid] = useState<Set<string>>(new Set());
+  const [activeSkills, setActiveSkills] = useState<string[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   // A saved choice can point to a key that was disconnected or a provider no longer configured.
   const selected = choice === AUTO || freeProviders.some((p) => p.id === choice) || (byok && byokId(byok) === choice) ? choice : AUTO;
-
-  const [activeSkills, setActiveSkills] = useState<string[]>([]);
 
   useEffect(() => {
     api.freeProviders().then(setFreeProviders).catch(() => undefined);
@@ -132,46 +134,20 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
 
   return (
     <section aria-labelledby="assistant-title">
-      <h2 id="assistant-title">Assistant</h2>
-      <p className="ai-note">
-        Answers come from AI models and can be wrong. Prices come from live store listings, and nothing is bought until you approve it in PayPal.
-      </p>
-      {activeSkills.length > 0 && <p className="ai-note">Using SnagSkills: {activeSkills.join(", ")}.</p>}
+      <h2 id="assistant-title">{t("tab.assistant")}</h2>
+      <p className="ai-note">{t("assistant.aiNote")}</p>
+      {activeSkills.length > 0 && <p className="ai-note">{t("assistant.usingSkills", { names: activeSkills.join(", ") })}</p>}
 
-      {freeProviders.length === 0 && !byok ? (
-        <p className="hint">No free AI provider is set up on this server. Connect your own key below.</p>
-      ) : (
-        <div className="row">
-          <label>
-            AI
-            <select
-              value={selected}
-              onChange={(e) => {
-                setChoice(e.target.value);
-                storage.set(AI_CHOICE_KEY, e.target.value);
-              }}
-            >
-              <option value={AUTO}>Auto · rotate when one hits its limit</option>
-              {byok && <option value={byokId(byok)}>Your key · {PROVIDERS.find((p) => p.id === byok.provider)?.label}</option>}
-              {freeProviders.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label} · free
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="hint small">The others stay as backup and pick up from the shared context file.</p>
-        </div>
-      )}
+      {freeProviders.length === 0 && !byok && <p className="hint">{t("assistant.noProvider")}</p>}
 
       <div className="chat" aria-live="polite">
         {messages.length === 0 && (
           <div>
-            <p className="hint">Ask in your own words, in any language. For example:</p>
+            <p className="hint">{t("assistant.tryIntro")}</p>
             <div className="suggestions">
-              {SUGGESTIONS.map((s) => (
-                <button key={s} type="button" onClick={() => void ask(s)} disabled={busy}>
-                  {s}
+              {SUGGESTIONS.map((key) => (
+                <button key={key} type="button" onClick={() => void ask(t(key))} disabled={busy}>
+                  {t(key)}
                 </button>
               ))}
             </div>
@@ -186,7 +162,7 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
             <div key={i} className="bubble assistant">
               {m.handoffs.map((h, j) => (
                 <p key={j} className="handoff">
-                  {h.from} stopped ({h.reason}). {h.to} took over from the context file.
+                  {t("handoff.text", { from: h.from, to: h.to, reason: HANDOFF_REASON[h.reason] ? t(HANDOFF_REASON[h.reason]!) : h.reason })}
                 </p>
               ))}
               <p className="reply">
@@ -198,12 +174,12 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
                     <strong>{p.title}</strong>
                     <span className="row">
                       <span className="money">{money(p.priceCents)}</span>
-                      <span className="deal">At your price</span>
+                      <span className="deal">{t("deal.atYourPrice")}</span>
                     </span>
                   </div>
                   {p.reason && <p className="hint">{p.reason}</p>}
                   {paid.has(p.wishId) ? (
-                    <p>Paid in the PayPal sandbox.</p>
+                    <p>{t("assistant.paid")}</p>
                   ) : (
                     config && (
                       <PayPalButton
@@ -218,11 +194,11 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
                   )}
                 </div>
               ))}
-              <span className="hint small">AI answer · {m.provider}</span>
+              <span className="hint small">{t("assistant.answeredBy", { name: m.provider })}</span>
             </div>
           ),
         )}
-        {busy && <p className="hint">Checking products, prices and your budget…</p>}
+        {busy && <p className="hint">{t("assistant.busy")}</p>}
         <div ref={endRef} />
       </div>
 
@@ -230,51 +206,74 @@ export function Assistant({ config, onWalletChange, onAccessNeeded }: { config: 
 
       <form onSubmit={(e) => void send(e)} className="row">
         <label className="grow">
-          <span className="sr-only">Message</span>
-          <input name="message" maxLength={1000} placeholder="Ask Snagwise…" autoComplete="off" disabled={busy} />
+          <span className="sr-only">{t("assistant.message")}</span>
+          <input name="message" maxLength={1000} placeholder={t("assistant.placeholder")} autoComplete="off" disabled={busy} />
         </label>
-        <button disabled={busy}>Send</button>
+        <button disabled={busy}>{t("assistant.send")}</button>
       </form>
 
       {conversationId && (
         <details className="context" onToggle={(e) => (e.currentTarget as HTMLDetailsElement).open && void showContext()}>
-          <summary>Context file shared between AI models (.md)</summary>
-          <pre>{contextMd ?? "Loading…"}</pre>
+          <summary>{t("assistant.contextFile")}</summary>
+          <pre>{contextMd ?? t("common.loading")}</pre>
         </details>
       )}
 
+      {/* AI choice and personal keys: rarely needed ("Auto" is the right default), so they stay folded below the chat. */}
       <details className="byok">
-        <summary>{byok ? "Your AI key (connected)" : "Use your own AI key"}</summary>
-        <p className="hint">
-          Your key is sent only with your messages, used for that request, and never stored or logged on the server. Usage is billed to your account with that provider.
-        </p>
+        <summary>{byok ? t("assistant.settingsConnected") : t("assistant.settings")}</summary>
+        {(freeProviders.length > 0 || byok) && (
+          <div className="stack">
+            <label>
+              {t("assistant.ai")}
+              <select
+                value={selected}
+                onChange={(e) => {
+                  setChoice(e.target.value);
+                  storage.set(AI_CHOICE_KEY, e.target.value);
+                }}
+              >
+                <option value={AUTO}>{t("assistant.auto")}</option>
+                {byok && <option value={byokId(byok)}>{t("assistant.yourKey", { name: PROVIDERS.find((p) => p.id === byok.provider)?.label ?? "" })}</option>}
+                {freeProviders.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {t("assistant.free", { name: p.label })}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="hint small">{t("assistant.backup")}</p>
+          </div>
+        )}
+        <h3>{byok ? t("byok.connectedTitle") : t("byok.title")}</h3>
+        <p className="hint">{t("byok.privacy")}</p>
         <form onSubmit={saveByok} className="stack">
           <label>
-            Provider
+            {t("byok.provider")}
             <select name="provider" defaultValue={byok?.provider ?? "anthropic"}>
               {PROVIDERS.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.label} ({p.hint})
+                  {p.label} ({t(p.hint)})
                 </option>
               ))}
             </select>
           </label>
           <label>
-            API key
-            <input name="apiKey" type="password" autoComplete="off" required minLength={10} placeholder={byok ? "•••••••• (connected)" : ""} />
+            {t("byok.key")}
+            <input name="apiKey" type="password" autoComplete="off" required minLength={10} placeholder={byok ? t("byok.connectedPlaceholder") : ""} />
           </label>
           <label>
-            Model (optional)
-            <input name="model" defaultValue={byok?.model ?? ""} placeholder="Leave empty for the default" />
+            {t("byok.model")}
+            <input name="model" defaultValue={byok?.model ?? ""} placeholder={t("byok.modelPlaceholder")} />
           </label>
           <label className="check">
-            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Remember on this device
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> {t("byok.remember")}
           </label>
           <div className="row">
-            <button>Connect</button>
+            <button>{t("byok.connect")}</button>
             {byok && (
               <button type="button" className="quiet" onClick={clearByok}>
-                Disconnect
+                {t("byok.disconnect")}
               </button>
             )}
           </div>

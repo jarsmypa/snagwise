@@ -107,6 +107,7 @@ export function registerAgent(
         recent,
         notes: session.notes,
         skills: opts.deps.skills(),
+        alerts: opts.deps.alerts(),
         ...(handoff ? { handoff } : {}),
       });
 
